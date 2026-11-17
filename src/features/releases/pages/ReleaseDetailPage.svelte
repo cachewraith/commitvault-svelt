@@ -1,0 +1,225 @@
+<!-- One release: metadata, rich-text notes and the commits associated with it. -->
+<script lang="ts">
+  import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import GitCommitIcon from '@lucide/svelte/icons/git-commit-horizontal';
+  import PencilIcon from '@lucide/svelte/icons/pencil';
+  import TrashIcon from '@lucide/svelte/icons/trash';
+  import { queryKeys } from '$lib/api';
+  import {
+    confirm,
+    DateTime,
+    DetailSkeleton,
+    EmptyState,
+    ErrorState,
+    PageHeader,
+    RichTextViewer,
+    StatusBadge,
+    TagBadge,
+    toast,
+    toastError,
+  } from '$lib/components';
+  import { Button } from '$lib/components/ui/button';
+  import { navigate, setPageTitle } from '$lib/router';
+  import { pluralize } from '$lib/utils';
+  import { paths } from '$routes/paths';
+  import CommitList from '$features/commits/components/CommitList.svelte';
+  import { releasesApi } from '../api';
+  import ReleaseFormDialog from '../components/ReleaseFormDialog.svelte';
+  import type { ReleaseDetail, ReleaseStatus } from '../types';
+
+  let { releaseId }: { releaseId: string } = $props();
+
+  const queryClient = useQueryClient();
+
+  const query = createQuery(() => ({
+    queryKey: queryKeys.releases.detail(releaseId),
+    queryFn: ({ signal }) => releasesApi.get(releaseId, signal),
+  }));
+  const release = $derived(query.data);
+
+  $effect(() => {
+    setPageTitle(release ? `${release.version} — ${release.title}` : 'Release');
+  });
+
+  let editing = $state(false);
+
+  function invalidateRelated() {
+    for (const key of [queryKeys.releases.lists(), queryKeys.commits.all, queryKeys.projects.all, queryKeys.dashboard.all]) {
+      void queryClient.invalidateQueries({ queryKey: key });
+    }
+  }
+
+  /** The status transitions offered as one-click actions. */
+  const transitions: Record<ReleaseStatus, { to: ReleaseStatus; label: string }[]> = {
+    draft: [{ to: 'released', label: 'Mark as released' }],
+    released: [
+      { to: 'deprecated', label: 'Deprecate' },
+      { to: 'draft', label: 'Back to draft' },
+    ],
+    deprecated: [
+      { to: 'released', label: 'Mark as released' },
+      { to: 'draft', label: 'Back to draft' },
+    ],
+  };
+
+  const STATUS_TOASTS: Record<ReleaseStatus, string> = {
+    draft: 'Release moved back to draft',
+    released: 'Release marked as released',
+    deprecated: 'Release deprecated',
+  };
+
+  const changeStatus = createMutation(() => ({
+    mutationFn: (status: ReleaseStatus) => releasesApi.update(releaseId, { status }),
+    onSuccess: (saved) => {
+      queryClient.setQueryData(queryKeys.releases.detail(releaseId), saved);
+      invalidateRelated();
+      toast.success(STATUS_TOASTS[saved.status]);
+    },
+    onError: (error) => toastError(error, 'Could not change the status.'),
+  }));
+
+  const remove = createMutation(() => ({
+    mutationFn: () => releasesApi.remove(releaseId),
+    onSuccess: () => {
+      queryClient.removeQueries({ queryKey: queryKeys.releases.detail(releaseId) });
+      invalidateRelated();
+      toast.success('Release deleted');
+      navigate(paths.releases(), { replace: true });
+    },
+    onError: (error) => toastError(error, 'Could not delete the release.'),
+  }));
+
+  async function deleteRelease(current: ReleaseDetail) {
+    const ok = await confirm({
+      title: `Delete release ${current.version}?`,
+      description:
+        current.commit_count > 0
+          ? `The release and its notes are removed. Its ${pluralize(current.commit_count, 'commit')} stay recorded in the project.`
+          : 'The release and its notes are removed. This cannot be undone.',
+      confirmLabel: 'Delete release',
+      destructive: true,
+    });
+    if (ok) remove.mutate();
+  }
+</script>
+
+<div class="page">
+  {#if query.isPending}
+    <DetailSkeleton />
+  {:else if query.isError}
+    <PageHeader title="Release" breadcrumbs={[{ label: 'Releases', href: paths.releases() }, { label: 'Release' }]} />
+    <ErrorState error={query.error} onretry={() => query.refetch()} retrying={query.isFetching} />
+  {:else if release}
+    <PageHeader
+      title="{release.version} — {release.title}"
+      description={release.description ?? undefined}
+      breadcrumbs={[
+        { label: 'Releases', href: paths.releases() },
+        { label: release.project.name, href: paths.releases({ project_id: release.project.id }) },
+        { label: release.version },
+      ]}
+    >
+      {#snippet meta()}
+        <StatusBadge status={release.status} />
+      {/snippet}
+      {#snippet actions()}
+        {#each transitions[release.status] as transition (transition.to)}
+          <Button
+            variant="outline"
+            disabled={changeStatus.isPending}
+            onclick={() => changeStatus.mutate(transition.to)}
+          >
+            {transition.label}
+          </Button>
+        {/each}
+        <Button variant="outline" onclick={() => (editing = true)}>
+          <PencilIcon aria-hidden="true" />
+          Edit
+        </Button>
+        <Button
+          variant="outline"
+          class="text-danger hover:text-danger"
+          disabled={remove.isPending}
+          onclick={() => deleteRelease(release)}
+        >
+          <TrashIcon aria-hidden="true" />
+          Delete
+        </Button>
+      {/snippet}
+    </PageHeader>
+
+    <div class="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
+      <div class="flex min-w-0 flex-col gap-6">
+        <section aria-labelledby="release-notes-heading" class="bg-card rounded-lg border p-4">
+          <h2 id="release-notes-heading" class="mb-3 text-sm font-semibold">Release notes</h2>
+          <RichTextViewer value={release.release_notes ?? null} emptyText="No release notes written yet." />
+        </section>
+
+        <section aria-labelledby="release-commits-heading" class="bg-card rounded-lg border p-4">
+          <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="release-commits-heading" class="text-sm font-semibold">
+              Included commits
+              <span class="text-muted-foreground tabular font-normal">({release.commits.length})</span>
+            </h2>
+            {#if release.commits.length > 0}
+              <a href={paths.commits({ release_id: release.id })} class="text-brand text-sm hover:underline">
+                Open in commits
+              </a>
+            {/if}
+          </div>
+          {#if release.commits.length === 0}
+            <EmptyState
+              compact
+              bordered={false}
+              icon={GitCommitIcon}
+              title="No commits associated"
+              description="Add the commits that are part of this release so it is clear what shipped."
+            >
+              {#snippet action()}
+                <Button variant="outline" onclick={() => (editing = true)}>Add commits</Button>
+              {/snippet}
+            </EmptyState>
+          {:else}
+            <CommitList commits={release.commits} label="Commits in this release" />
+          {/if}
+        </section>
+      </div>
+
+      <aside aria-label="Release details" class="bg-card h-fit rounded-lg border p-4">
+        <h2 class="mb-3 text-sm font-semibold">Details</h2>
+        <dl class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2.5 text-sm">
+          <dt class="text-muted-foreground">Project</dt>
+          <dd>
+            <a href={paths.project(release.project.id)} class="text-brand hover:underline">{release.project.name}</a>
+          </dd>
+          <dt class="text-muted-foreground">Version</dt>
+          <dd class="font-mono text-[0.8125rem]">{release.version}</dd>
+          <dt class="text-muted-foreground">Status</dt>
+          <dd><StatusBadge status={release.status} variant="dot" /></dd>
+          <dt class="text-muted-foreground">Released</dt>
+          <dd class="tabular">
+            {#if release.released_at}
+              <DateTime value={release.released_at} mode="datetime" />
+            {:else}
+              <span class="text-muted-foreground">Not released</span>
+            {/if}
+          </dd>
+          <dt class="text-muted-foreground">Created</dt>
+          <dd class="tabular"><DateTime value={release.created_at} mode="datetime" /></dd>
+          <dt class="text-muted-foreground">Updated</dt>
+          <dd class="tabular"><DateTime value={release.updated_at} /></dd>
+          <dt class="text-muted-foreground">Tags</dt>
+          <dd class="flex flex-wrap gap-1">
+            {#each release.tags as tag (tag.id)}
+              <TagBadge name={tag.name} color={tag.color} href={paths.releases({ tag_id: tag.id })} />
+            {:else}
+              <span class="text-muted-foreground">None</span>
+            {/each}
+          </dd>
+        </dl>
+      </aside>
+    </div>
+
+    <ReleaseFormDialog bind:open={editing} {release} />
+  {/if}
+</div>

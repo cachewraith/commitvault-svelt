@@ -1,0 +1,254 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+@import 'shadcn-svelte/tailwind.css';
+@import '@fontsource-variable/geist';
+@import '@fontsource-variable/geist-mono';
+@import './rich-text.css';
+
+@custom-variant dark (&:is(.dark *));
+
+/*
+ * CommitVault design tokens
+ * -------------------------
+ * Dark-first. `.dark` on <html> is the default (see static/theme-init.js);
+ * removing it switches to the light palette defined on :root.
+ *
+ * Rules of use (see CLAUDE.md → Design system):
+ *  - Surfaces: background → card → muted, separated by `border`, never by shadows alone.
+ *  - `primary` is the neutral high-contrast action colour (near-white on dark).
+ *  - `brand` is the single accent: links, focus rings, active navigation, selection.
+ *  - Status colours are semantic only (success/danger/warning/info/neutral);
+ *    never use them for decoration.
+ */
+
+:root {
+  --radius: 0.5rem;
+
+  --background: oklch(0.995 0.001 286);
+  --foreground: oklch(0.21 0.006 286);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.21 0.006 286);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.006 286);
+  --primary: oklch(0.21 0.006 286);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.96 0.002 286);
+  --secondary-foreground: oklch(0.21 0.006 286);
+  --muted: oklch(0.965 0.002 286);
+  --muted-foreground: oklch(0.5 0.014 286);
+  --accent: oklch(0.955 0.003 286);
+  --accent-foreground: oklch(0.21 0.006 286);
+  --destructive: oklch(0.56 0.21 26);
+  --border: oklch(0.915 0.004 286);
+  --input: oklch(0.89 0.005 286);
+  --ring: oklch(0.56 0.13 255);
+
+  --brand: oklch(0.5 0.14 255);
+  --brand-foreground: oklch(0.985 0 0);
+
+  --success: oklch(0.52 0.13 155);
+  --danger: oklch(0.55 0.2 26);
+  --warning: oklch(0.58 0.13 70);
+  --info: oklch(0.52 0.13 245);
+  --neutral: oklch(0.52 0.012 286);
+
+  --sidebar: oklch(0.98 0.002 286);
+  --sidebar-foreground: oklch(0.3 0.008 286);
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: var(--brand-foreground);
+  --sidebar-accent: oklch(0.945 0.004 286);
+  --sidebar-accent-foreground: oklch(0.21 0.006 286);
+  --sidebar-border: oklch(0.915 0.004 286);
+  --sidebar-ring: var(--ring);
+
+  --chart-1: oklch(0.5 0.14 255);
+  --chart-2: oklch(0.52 0.13 155);
+  --chart-3: oklch(0.58 0.13 70);
+  --chart-4: oklch(0.55 0.2 26);
+  --chart-5: oklch(0.52 0.012 286);
+
+  /* Syntax highlighting (code blocks) */
+  --code-bg: oklch(0.965 0.002 286);
+  --hl-comment: oklch(0.58 0.012 286);
+  --hl-keyword: oklch(0.48 0.17 300);
+  --hl-string: oklch(0.48 0.12 155);
+  --hl-number: oklch(0.52 0.14 55);
+  --hl-function: oklch(0.48 0.14 255);
+  --hl-type: oklch(0.5 0.11 200);
+  --hl-variable: oklch(0.5 0.16 20);
+}
+
+.dark {
+  --background: oklch(0.155 0.004 286);
+  --foreground: oklch(0.93 0.003 286);
+  --card: oklch(0.185 0.005 286);
+  --card-foreground: oklch(0.93 0.003 286);
+  --popover: oklch(0.2 0.005 286);
+  --popover-foreground: oklch(0.93 0.003 286);
+  --primary: oklch(0.93 0.003 286);
+  --primary-foreground: oklch(0.185 0.005 286);
+  --secondary: oklch(0.245 0.006 286);
+  --secondary-foreground: oklch(0.93 0.003 286);
+  --muted: oklch(0.225 0.006 286);
+  --muted-foreground: oklch(0.68 0.012 286);
+  --accent: oklch(0.255 0.007 286);
+  --accent-foreground: oklch(0.96 0.002 286);
+  --destructive: oklch(0.68 0.18 23);
+  --border: oklch(1 0 0 / 9%);
+  --input: oklch(1 0 0 / 13%);
+  --ring: oklch(0.7 0.12 255);
+
+  --brand: oklch(0.74 0.11 255);
+  --brand-foreground: oklch(0.17 0.02 255);
+
+  --success: oklch(0.76 0.14 155);
+  --danger: oklch(0.72 0.17 23);
+  --warning: oklch(0.8 0.13 80);
+  --info: oklch(0.76 0.11 240);
+  --neutral: oklch(0.7 0.012 286);
+
+  --sidebar: oklch(0.17 0.004 286);
+  --sidebar-foreground: oklch(0.8 0.008 286);
+  --sidebar-accent: oklch(0.235 0.006 286);
+  --sidebar-accent-foreground: oklch(0.96 0.002 286);
+  --sidebar-border: oklch(1 0 0 / 8%);
+
+  --chart-1: oklch(0.74 0.11 255);
+  --chart-2: oklch(0.76 0.14 155);
+  --chart-3: oklch(0.8 0.13 80);
+  --chart-4: oklch(0.72 0.17 23);
+  --chart-5: oklch(0.7 0.012 286);
+
+  --code-bg: oklch(0.13 0.004 286);
+  --hl-comment: oklch(0.58 0.012 286);
+  --hl-keyword: oklch(0.76 0.13 300);
+  --hl-string: oklch(0.8 0.12 150);
+  --hl-number: oklch(0.8 0.12 65);
+  --hl-function: oklch(0.78 0.11 250);
+  --hl-type: oklch(0.8 0.09 200);
+  --hl-variable: oklch(0.76 0.13 20);
+}
+
+@theme inline {
+  --font-sans: 'Geist Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono:
+    'Geist Mono Variable', ui-monospace, 'SFMono-Regular', 'Cascadia Code', Menlo, Consolas,
+    monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-success: var(--success);
+  --color-danger: var(--danger);
+  --color-warning: var(--warning);
+  --color-info: var(--info);
+  --color-neutral: var(--neutral);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    @apply font-sans;
+    color-scheme: light;
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+    scrollbar-gutter: stable;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  body {
+    @apply bg-background text-foreground min-h-dvh text-sm antialiased;
+    font-feature-settings: 'ss01', 'cv11';
+  }
+
+  /* One consistent, clearly visible keyboard focus indicator. */
+  :focus-visible {
+    @apply outline-ring outline-2 outline-offset-2;
+  }
+
+  ::selection {
+    background-color: color-mix(in oklch, var(--brand) 30%, transparent);
+  }
+
+  code,
+  kbd,
+  samp,
+  pre {
+    @apply font-mono;
+  }
+
+  /* Tabular figures wherever numbers line up (stats, tables, timestamps). */
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@layer utilities {
+  /* Page container used by every screen for consistent gutters and max width. */
+  .page {
+    @apply mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 lg:px-8;
+  }
+
+  /* Small uppercase label for section headings and table headers. */
+  .eyebrow {
+    @apply text-muted-foreground text-[0.6875rem] font-medium tracking-wider uppercase;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
