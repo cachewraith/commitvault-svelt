@@ -53,7 +53,6 @@
   const environments = createQuery(() => ({
     queryKey: listKey,
     queryFn: ({ signal }) => environmentsApi.listForProject(projectId, signal),
-    enabled: project.isSuccess,
   }));
 
   $effect(() => {

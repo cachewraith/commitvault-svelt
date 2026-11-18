@@ -229,6 +229,12 @@ test('7 · creates a release with a commit', async () => {
 });
 
 test('8 · creates, autosaves and reads a technical note', async () => {
+  // "New note" opens the editor — not a side panel for a note called "new".
+  await page.goto('/notes');
+  await page.getByRole('link', { name: 'New note' }).first().click();
+  await expect(page).toHaveURL(/\/notes\/new$/);
+  await expect(page.getByRole('dialog')).toBeHidden();
+
   await page.goto(`/notes/new?project_id=${projectId}`);
   await page.getByLabel('Title').fill(noteTitle);
 

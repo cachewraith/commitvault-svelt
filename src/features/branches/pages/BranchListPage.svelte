@@ -65,7 +65,6 @@
     queryKey: queryKeys.branches.list({ projectId, ...params }),
     queryFn: ({ signal }) => branchesApi.list(projectId, params, signal),
     placeholderData: keepPreviousData,
-    enabled: project.isSuccess,
   }));
 
   $effect(() => {

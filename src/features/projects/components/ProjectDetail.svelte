@@ -72,33 +72,28 @@
     queryKey: queryKeys.projects.detail(projectId),
     queryFn: ({ signal }) => projectsApi.get(projectId, signal),
   }));
-  const loaded = $derived(project.isSuccess);
+
 
   const environments = createQuery(() => ({
     queryKey: queryKeys.environments.byProject(projectId),
     queryFn: ({ signal }) => environmentsApi.listForProject(projectId, signal),
-    enabled: loaded,
   }));
   const deployments = createQuery(() => ({
     queryKey: queryKeys.deployments.list(recentParams),
     queryFn: ({ signal }) => deploymentsApi.list(recentParams, signal),
-    enabled: loaded,
   }));
   const branchParams = { per_page: SIDE };
   const branches = createQuery(() => ({
     queryKey: queryKeys.branches.list({ projectId, ...branchParams }),
     queryFn: ({ signal }) => branchesApi.list(projectId, branchParams, signal),
-    enabled: loaded,
   }));
   const releases = createQuery(() => ({
     queryKey: queryKeys.releases.list(sideParams),
     queryFn: ({ signal }) => releasesApi.list(sideParams, signal),
-    enabled: loaded,
   }));
   const notes = createQuery(() => ({
     queryKey: queryKeys.notes.list(sideParams),
     queryFn: ({ signal }) => notesApi.list(sideParams, signal),
-    enabled: loaded,
   }));
 
   $effect(() => {

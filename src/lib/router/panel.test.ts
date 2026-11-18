@@ -30,7 +30,14 @@ beforeAll(() => {
 
 afterAll(() => setPanelHostMounted(false));
 
-beforeEach(() => navigate('/commits?project_id=p1', { replace: true }));
+const C1 = '01a1e891-0000-7000-8000-000000000001';
+const C2 = '01a1e891-0000-7000-8000-000000000002';
+const C3 = '01a1e891-0000-7000-8000-000000000003';
+const C9 = '01a1e891-0000-7000-8000-000000000009';
+const P1 = '01a1e891-0000-7000-8000-0000000000a1';
+const P9 = '01a1e891-0000-7000-8000-0000000000a9';
+
+beforeEach(() => navigate('/commits?project_id=x', { replace: true }));
 
 const popstate = () => new Promise((resolve) => window.addEventListener('popstate', resolve, { once: true }));
 
@@ -55,58 +62,61 @@ function clickLink(href: string, init: MouseEventInit = {}, attributes: Record<s
 
 describe('record panel', () => {
   it('recognises record links only', () => {
-    expect(panelTargetFor('/commits/c1')).toEqual({ type: 'commit', id: 'c1' });
-    expect(panelTargetFor('/projects/p1')).toEqual({ type: 'project', id: 'p1' });
+    expect(panelTargetFor(`/commits/${C1}`)).toEqual({ type: 'commit', id: C1 });
+    expect(panelTargetFor(`/projects/${P1}`)).toEqual({ type: 'project', id: P1 });
     expect(panelTargetFor('/commits')).toBeNull();
-    expect(panelTargetFor('/commits/c1?x=1')).toBeNull();
-    expect(panelTargetFor('https://example.com/commits/c1')).toBeNull();
+    expect(panelTargetFor(`/commits/${C1}?x=1`)).toBeNull();
+    expect(panelTargetFor(`https://example.com/commits/${C1}`)).toBeNull();
+    // Static siblings of a record route are pages, not records.
+    expect(panelTargetFor('/commits/new')).toBeNull();
+    expect(panelTargetFor('/projects/new')).toBeNull();
   });
 
   it('opens by pushing ?panel= and closes with a history step back', async () => {
     const before = window.history.length;
-    recordPanel.open({ type: 'commit', id: 'c1' });
-    expect(recordPanel.current).toEqual({ type: 'commit', id: 'c1' });
-    expect(window.location.search).toBe('?project_id=p1&panel=commit.c1');
+    recordPanel.open({ type: 'commit', id: C1 });
+    expect(recordPanel.current).toEqual({ type: 'commit', id: C1 });
+    expect(window.location.search).toBe(`?project_id=x&panel=commit.${C1}`);
     expect(window.history.length).toBe(before + 1);
-    expect(recordPanel.shows('/commits/c1')).toBe(true);
-    expect(recordPanel.shows('/commits/c2')).toBe(false);
+    expect(recordPanel.shows(`/commits/${C1}`)).toBe(true);
+    expect(recordPanel.shows(`/commits/${C2}`)).toBe(false);
 
     // Switching records replaces the entry instead of stacking.
-    recordPanel.open({ type: 'project', id: 'p9' });
+    recordPanel.open({ type: 'project', id: P9 });
     expect(window.history.length).toBe(before + 1);
 
     const back = popstate();
     recordPanel.close();
     await back;
     expect(recordPanel.current).toBeNull();
-    expect(window.location.search).toBe('?project_id=p1');
+    expect(window.location.search).toBe('?project_id=x');
   });
 
   it('closes a deep-linked panel by dropping the key, without leaving the page', () => {
-    navigate('/commits?project_id=p1&panel=commit.c9', { replace: true });
+    navigate(`/commits?project_id=x&panel=commit.${C9}`, { replace: true });
     const back = vi.spyOn(window.history, 'back');
-    recordPanel.open({ type: 'commit', id: 'c3' });
+    recordPanel.open({ type: 'commit', id: C3 });
     recordPanel.close();
     expect(back).not.toHaveBeenCalled();
     expect(recordPanel.current).toBeNull();
     expect(window.location.pathname).toBe('/commits');
-    expect(window.location.search).toBe('?project_id=p1');
+    expect(window.location.search).toBe('?project_id=x');
     back.mockRestore();
   });
 
   it('turns plain clicks on record links into panel opens', () => {
-    expect(clickLink('/commits/c1')).toBe(true);
-    expect(recordPanel.current).toEqual({ type: 'commit', id: 'c1' });
+    expect(clickLink(`/commits/${C1}`)).toBe(true);
+    expect(recordPanel.current).toEqual({ type: 'commit', id: C1 });
     expect(window.location.pathname).toBe('/commits');
   });
 
   it('leaves modifier clicks, full-page links and ordinary links alone', () => {
-    expect(clickLink('/commits/c1', { metaKey: true })).toBe(false);
+    expect(clickLink(`/commits/${C1}`, { metaKey: true })).toBe(false);
     expect(recordPanel.current).toBeNull();
     // A full-page link is left to the router, which navigates to the record's page.
-    clickLink('/commits/c1', {}, { 'data-full-page': '' });
+    clickLink(`/commits/${C1}`, {}, { 'data-full-page': '' });
     expect(recordPanel.current).toBeNull();
-    expect(window.location.pathname).toBe('/commits/c1');
+    expect(window.location.pathname).toBe(`/commits/${C1}`);
     navigate('/commits', { replace: true });
     // Not a panel record: the router handles it as a normal navigation.
     clickLink('/commits');
@@ -115,11 +125,13 @@ describe('record panel', () => {
 
   it('does nothing without a mounted host, or for the page already shown', () => {
     setPanelHostMounted(false);
-    expect(openPanelFor('/commits/c1')).toBe(false);
+    expect(openPanelFor(`/commits/${C1}`)).toBe(false);
     setPanelHostMounted(true);
 
-    navigate('/commits/c1', { replace: true });
-    expect(openPanelFor('/commits/c1')).toBe(false);
-    expect(openPanelFor('/projects/p1')).toBe(true);
+    navigate(`/commits/${C1}`, { replace: true });
+    expect(openPanelFor(`/commits/${C1}`)).toBe(false);
+    expect(openPanelFor(`/projects/${P1}`)).toBe(true);
+    // "New …" links keep navigating to their page.
+    expect(openPanelFor('/commits/new')).toBe(false);
   });
 });

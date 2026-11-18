@@ -28,6 +28,12 @@ interface PanelRule {
 }
 
 let rules: PanelRule[] = [];
+
+/**
+ * Record ids are UUIDs. Requiring one keeps static siblings of a record
+ * route — `/notes/new`, `/projects/new`… — out of the panel.
+ */
+const RECORD_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 let hostMounted = false;
 
 /** Record pages that open in the panel, e.g. `{ type: 'commit', path: '/commits/:id' }` (one param). */
@@ -48,7 +54,7 @@ export function panelTargetFor(href: string | null | undefined): PanelTarget | n
   for (const rule of rules) {
     const params = matchPattern(rule.compiled, url.pathname);
     const id = params && Object.values(params)[0];
-    if (id) return { type: rule.type, id };
+    if (id && RECORD_ID.test(id)) return { type: rule.type, id };
   }
   return null;
 }
@@ -56,8 +62,9 @@ export function panelTargetFor(href: string | null | undefined): PanelTarget | n
 function parse(raw: string | null): PanelTarget | null {
   if (!raw) return null;
   const dot = raw.indexOf('.');
-  if (dot <= 0 || dot === raw.length - 1) return null;
-  return { type: raw.slice(0, dot), id: raw.slice(dot + 1) };
+  if (dot <= 0) return null;
+  const id = raw.slice(dot + 1);
+  return RECORD_ID.test(id) ? { type: raw.slice(0, dot), id } : null;
 }
 
 export const recordPanel = {

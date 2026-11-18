@@ -68,7 +68,6 @@
     queryKey: queryKeys.commits.list(commitParams),
     queryFn: ({ signal }) => commitsApi.list(commitParams, signal),
     placeholderData: keepPreviousData,
-    enabled: branch.isSuccess,
   }));
 
   $effect(() => {
