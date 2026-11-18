@@ -6,6 +6,9 @@ export type {
   RouteLayout,
   NavigateOptions,
 } from './router.svelte';
+export { prefetchRoutes } from './prefetch';
+export { detailPanel, openInPanel } from './panel.svelte';
+export type { DetailPanelState } from './panel.svelte';
 export { queryString, queryNumber, queryBoolean, queryEnum } from './query.svelte';
 export type { QueryBinding } from './query.svelte';
 export { buildPath, withQuery, safeInternalPath } from './match';

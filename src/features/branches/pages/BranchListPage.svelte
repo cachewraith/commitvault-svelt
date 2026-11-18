@@ -1,0 +1,243 @@
+<!--
+  Branches of one project: commit count and latest commit per branch;
+  create, rename and delete. URL-driven search, sort and page.
+-->
+<script lang="ts">
+  import { createMutation, createQuery, keepPreviousData, useQueryClient } from '@tanstack/svelte-query';
+  import GitBranchIcon from '@lucide/svelte/icons/git-branch';
+  import PencilIcon from '@lucide/svelte/icons/pencil';
+  import PlusIcon from '@lucide/svelte/icons/plus';
+  import TrashIcon from '@lucide/svelte/icons/trash';
+  import { isApiError, queryKeys, type SortOrder } from '$lib/api';
+  import {
+    DataTable,
+    DataTableBody,
+    DataTableCell,
+    DataTableHead,
+    DataTableHeader,
+    DataTableRow,
+    DateTime,
+    EmptyState,
+    ErrorState,
+    FilterBar,
+    PageHeader,
+    Pagination,
+    SearchInput,
+    TableSkeleton,
+    toast,
+    toastError,
+  } from '$lib/components';
+  import { Button } from '$lib/components/ui/button';
+  import { queryEnum, queryNumber, queryString, setPageTitle, setQuery } from '$lib/router';
+  import { formatNumber } from '$lib/utils';
+  import { paths } from '$routes/paths';
+  import { projectsApi } from '$features/projects/api';
+  import { branchesApi, type BranchListParams } from '../api';
+  import BranchFormDialog from '../components/BranchFormDialog.svelte';
+  import { confirmBranchDeletion } from '../delete';
+  import { invalidateBranches } from '../queries';
+  import type { Branch, BranchSort } from '../types';
+
+  let { projectId }: { projectId: string } = $props();
+
+  const SORTS = ['last_commit', 'name', 'created_at'] as const satisfies readonly BranchSort[];
+  const queryClient = useQueryClient();
+
+  const page = queryNumber('page', 1);
+  const search = queryString('search');
+  const sort = queryEnum('sort', SORTS, 'last_commit');
+  const order = queryEnum('order', ['asc', 'desc']);
+
+  const params = $derived<BranchListParams>({
+    page: page.value,
+    per_page: 25,
+    search: search.value || undefined,
+    sort: sort.value,
+    order: order.value,
+  });
+
+  const project = createQuery(() => ({
+    queryKey: queryKeys.projects.detail(projectId),
+    queryFn: ({ signal }) => projectsApi.get(projectId, signal),
+  }));
+
+  const branches = createQuery(() => ({
+    queryKey: queryKeys.branches.list({ projectId, ...params }),
+    queryFn: ({ signal }) => branchesApi.list(projectId, params, signal),
+    placeholderData: keepPreviousData,
+    enabled: project.isSuccess,
+  }));
+
+  $effect(() => {
+    if (project.data) setPageTitle(`Branches · ${project.data.name}`);
+  });
+
+  let dialogOpen = $state(false);
+  let editing = $state.raw<Branch | undefined>(undefined);
+
+  function openCreate() {
+    editing = undefined;
+    dialogOpen = true;
+  }
+
+  function openEdit(branch: Branch) {
+    editing = branch;
+    dialogOpen = true;
+  }
+
+  const remove = createMutation(() => ({
+    mutationFn: (input: { branch: Branch; cascade: boolean }) =>
+      branchesApi.remove(input.branch.id, { cascade: input.cascade }),
+    onSuccess: (_: void, input) => {
+      invalidateBranches(queryClient);
+      toast.success(`Branch “${input.branch.name}” deleted`);
+    },
+    onError: (error: unknown) => toastError(error, 'Could not delete the branch.'),
+  }));
+
+  async function confirmRemove(branch: Branch) {
+    const answer = await confirmBranchDeletion(branch);
+    if (answer) remove.mutate({ branch, cascade: answer.cascade });
+  }
+
+  function onsort(nextSort: string, nextOrder: SortOrder) {
+    setQuery({ sort: nextSort === 'last_commit' ? null : nextSort, order: nextOrder, page: null });
+  }
+
+  // Name sorts ascending by default, the date columns descending.
+  const effectiveOrder = $derived(order.value ?? (sort.value === 'name' ? 'asc' : 'desc'));
+</script>
+
+<div class="page">
+  {#if project.isError}
+    <PageHeader title="Branches" breadcrumbs={[{ label: 'Projects', href: paths.projects() }, { label: 'Branches' }]} />
+    <ErrorState
+      error={project.error}
+      title={isApiError(project.error) && project.error.isNotFound ? 'Project not found' : undefined}
+      onretry={() => project.refetch()}
+      retrying={project.isFetching}
+    />
+  {:else}
+    <PageHeader
+      title="Branches"
+      description="Branches you record commits on. CommitVault never reads your repository."
+      breadcrumbs={[
+        { label: 'Projects', href: paths.projects() },
+        { label: project.data?.name ?? 'Project', href: paths.project(projectId) },
+        { label: 'Branches' },
+      ]}
+    >
+      {#snippet actions()}
+        <Button onclick={openCreate} disabled={!project.isSuccess}>
+          <PlusIcon aria-hidden="true" />
+          New branch
+        </Button>
+      {/snippet}
+    </PageHeader>
+
+    <FilterBar active={search.value !== ''} onreset={() => setQuery({ search: null, page: null })} label="Branch filters">
+      <SearchInput
+        value={search.value}
+        onsearch={(q) => setQuery({ search: q, page: null })}
+        label="Search branches"
+        placeholder="Search branch names…"
+        class="w-full sm:w-72"
+      />
+    </FilterBar>
+
+    {#if project.isPending || branches.isPending}
+      <TableSkeleton rows={6} columns={4} />
+    {:else if branches.isError}
+      <ErrorState error={branches.error} onretry={() => branches.refetch()} retrying={branches.isFetching} />
+    {:else if branches.data.data.length === 0}
+      {#if search.value !== ''}
+        <EmptyState icon={GitBranchIcon} title="No branches match “{search.value}”" description="Try another name.">
+          {#snippet action()}
+            <Button variant="outline" onclick={() => setQuery({ search: null, page: null })}>Clear search</Button>
+          {/snippet}
+        </EmptyState>
+      {:else}
+        <EmptyState
+          icon={GitBranchIcon}
+          title="No branches yet"
+          description="Create a branch to record commits on it."
+        >
+          {#snippet action()}
+            <Button onclick={openCreate}>
+              <PlusIcon aria-hidden="true" />
+              New branch
+            </Button>
+          {/snippet}
+        </EmptyState>
+      {/if}
+    {:else}
+      <DataTable label="Branches">
+        <DataTableHeader>
+          <DataTableRow>
+            <DataTableHead sortKey="name" sort={sort.value} order={effectiveOrder} {onsort} defaultOrder="asc">
+              Branch
+            </DataTableHead>
+            <DataTableHead align="right">Commits</DataTableHead>
+            <DataTableHead sortKey="last_commit" sort={sort.value} order={effectiveOrder} {onsort} defaultOrder="desc">
+              Latest commit
+            </DataTableHead>
+            <DataTableHead><span class="sr-only">Actions</span></DataTableHead>
+          </DataTableRow>
+        </DataTableHeader>
+        <DataTableBody>
+          {#each branches.data.data as branch (branch.id)}
+            <DataTableRow href={paths.branch(branch.id)}>
+              <DataTableCell class="max-w-md min-w-56">
+                <span class="flex min-w-0 items-center gap-2">
+                  <GitBranchIcon class="text-muted-foreground size-3.5 shrink-0" aria-hidden="true" />
+                  <a href={paths.branch(branch.id)} class="text-foreground hover:text-brand truncate font-mono text-sm">
+                    {branch.name}
+                  </a>
+                  {#if branch.is_default}
+                    <span class="text-muted-foreground shrink-0 rounded-md border px-1.5 text-xs">default</span>
+                  {/if}
+                </span>
+                {#if branch.description}
+                  <span class="text-muted-foreground mt-0.5 block truncate pl-5.5 text-xs">{branch.description}</span>
+                {/if}
+              </DataTableCell>
+              <DataTableCell align="right" class="tabular">
+                {#if branch.commit_count > 0}
+                  <a href={paths.commits({ project_id: projectId, branch_id: branch.id })} class="hover:underline">
+                    {formatNumber(branch.commit_count)}
+                  </a>
+                {:else}
+                  <span class="text-muted-foreground">0</span>
+                {/if}
+              </DataTableCell>
+              <DataTableCell class="tabular text-muted-foreground">
+                <DateTime value={branch.last_commit_at} mode="date" fallback="No commits" />
+              </DataTableCell>
+              <DataTableCell align="right">
+                <span class="inline-flex gap-0.5">
+                  <Button variant="ghost" size="icon-sm" onclick={() => openEdit(branch)} aria-label={`Edit ${branch.name}`}>
+                    <PencilIcon aria-hidden="true" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    onclick={() => confirmRemove(branch)}
+                    disabled={remove.isPending}
+                    aria-label={`Delete ${branch.name}`}
+                  >
+                    <TrashIcon aria-hidden="true" />
+                  </Button>
+                </span>
+              </DataTableCell>
+            </DataTableRow>
+          {/each}
+        </DataTableBody>
+        {#snippet footer()}
+          <Pagination meta={branches.data.meta} onchange={(next) => (page.value = next)} label="branches" />
+        {/snippet}
+      </DataTable>
+    {/if}
+
+    <BranchFormDialog bind:open={dialogOpen} {projectId} branch={editing} />
+  {/if}
+</div>

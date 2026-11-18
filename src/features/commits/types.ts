@@ -7,7 +7,6 @@ export type Commit = Schemas['CommitResponse'];
 export type CommitBrief = Schemas['CommitBrief'];
 /** Deployment records of one commit in one environment. */
 export type CommitEnvironment = Schemas['CommitEnvironment'];
-export type BranchSummary = Schemas['BranchSummary'];
 export type CommitSort = Schemas['CommitSort'];
 /** Filter on *recorded* deployments: `none` = no record exists (not "never deployed"). */
 export type CommitDeploymentFilter = Schemas['CommitDeploymentFilter'];

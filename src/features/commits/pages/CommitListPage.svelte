@@ -1,7 +1,8 @@
 <!--
   Commits across all projects: a dense, URL-driven table. Every filter lives in
   the query string, so a filtered view can be bookmarked or linked from other
-  screens (`?project_id=`, `?tag_id=`, `?release_id=`…).
+  screens (`?project_id=`, `?tag_id=`, `?release_id=`…). Clicking a commit
+  opens it in a side panel (`?view=<id>`) so the list stays in view.
 -->
 <script lang="ts">
   import { createQuery, keepPreviousData } from '@tanstack/svelte-query';
@@ -10,8 +11,6 @@
   import XIcon from '@lucide/svelte/icons/x';
   import { queryKeys, type SortOrder } from '$lib/api';
   import {
-    BranchBadge,
-    Combobox,
     DataTable,
     DataTableBody,
     DataTableCell,
@@ -20,10 +19,11 @@
     DataTableRow,
     DateRangeFilter,
     DateTime,
+    DetailPanel,
     EmptyState,
     ErrorState,
     FilterBar,
-    HashChip,
+    MoreFilters,
     PageHeader,
     Pagination,
     SearchInput,
@@ -31,7 +31,10 @@
     TagBadge,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import { queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import GitBranchIcon from '@lucide/svelte/icons/git-branch';
+  import { detailPanel, openInPanel, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import { branchesApi } from '$features/branches/api';
+  import BranchSelect from '$features/branches/components/BranchSelect.svelte';
   import EnvironmentSelect from '$features/environments/components/EnvironmentSelect.svelte';
   import ProjectSelect from '$features/projects/components/ProjectSelect.svelte';
   import { releasesApi } from '$features/releases/api';
@@ -39,6 +42,7 @@
   import { paths } from '$routes/paths';
   import { commitsApi, type CommitListParams } from '../api';
   import CommitDeploymentBadges from '../components/CommitDeploymentBadges.svelte';
+  import CommitDetail from '../components/CommitDetail.svelte';
   import CommitFormDialog from '../components/CommitFormDialog.svelte';
   import FilterSelect from '../components/FilterSelect.svelte';
   import { DEPLOYMENT_FILTER_LABELS, commitSubject } from '../format';
@@ -50,7 +54,7 @@
   const page = queryNumber('page', 1);
   const search = queryString('search');
   const projectId = queryString('project_id');
-  const branch = queryString('branch');
+  const branchId = queryString('branch_id');
   const dateFrom = queryString('date_from');
   const dateTo = queryString('date_to');
   const deployment = queryEnum('deployment_status', COMMIT_DEPLOYMENT_FILTERS);
@@ -65,7 +69,7 @@
     per_page: PER_PAGE,
     search: search.value || undefined,
     project_id: projectId.value || undefined,
-    branch: branch.value || undefined,
+    branch_id: branchId.value || undefined,
     date_from: dateFrom.value || undefined,
     date_to: dateTo.value || undefined,
     deployment_status: deployment.value,
@@ -82,10 +86,11 @@
     placeholderData: keepPreviousData,
   }));
 
-  const branches = createQuery(() => ({
-    queryKey: [...queryKeys.commits.all, 'branches', projectId.value] as const,
-    queryFn: ({ signal }) => commitsApi.branches(projectId.value, signal),
-    enabled: projectId.value !== '',
+  // Names the branch in the filter when it is deep-linked (`?branch_id=`).
+  const branch = createQuery(() => ({
+    queryKey: queryKeys.branches.detail(branchId.value),
+    queryFn: ({ signal }) => branchesApi.get(branchId.value, signal),
+    enabled: branchId.value !== '',
     staleTime: 60_000,
   }));
 
@@ -97,19 +102,6 @@
     staleTime: 60_000,
   }));
 
-  const branchOptions = $derived.by(() => {
-    const options = (branches.data ?? []).map((item) => ({
-      value: item.name,
-      label: item.name,
-      description: `${item.commit_count} ${item.commit_count === 1 ? 'commit' : 'commits'}`,
-    }));
-    // Keep a deep-linked branch selectable even when it is not in the list.
-    if (branch.value && !options.some((option) => option.value === branch.value)) {
-      options.unshift({ value: branch.value, label: branch.value, description: '' });
-    }
-    return options;
-  });
-
   const deploymentOptions = COMMIT_DEPLOYMENT_FILTERS.map((value) => ({
     value,
     label: DEPLOYMENT_FILTER_LABELS[value],
@@ -118,7 +110,7 @@
   const filtersActive = $derived(
     search.value !== '' ||
       projectId.value !== '' ||
-      branch.value !== '' ||
+      branchId.value !== '' ||
       dateFrom.value !== '' ||
       dateTo.value !== '' ||
       deployment.value !== undefined ||
@@ -131,7 +123,7 @@
     setQuery({
       search: null,
       project_id: null,
-      branch: null,
+      branch_id: null,
       date_from: null,
       date_to: null,
       deployment_status: null,
@@ -150,6 +142,12 @@
     });
   }
 
+  /** Filters inside "More filters" that are set. */
+  const moreActive = $derived(
+    [dateFrom.value || dateTo.value, tagId.value, environmentId.value].filter((value) => value !== '').length,
+  );
+
+  const panel = detailPanel();
   let createOpen = $state(false);
 </script>
 
@@ -173,32 +171,22 @@
     />
     <ProjectSelect
       value={projectId.value || null}
-      onchange={(next) => setQuery({ project_id: next, branch: null, environment_id: null, page: null })}
+      onchange={(next) => setQuery({ project_id: next, branch_id: null, environment_id: null, page: null })}
       placeholder="All projects"
       clearable
       includeArchived
-      class="w-full sm:w-52"
+      class="w-full sm:w-48"
     />
     {#if projectId.value !== ''}
-      <Combobox
-        options={branchOptions}
-        value={branch.value || null}
-        onchange={(next) => setQuery({ branch: next, page: null })}
+      <BranchSelect
+        projectId={projectId.value}
+        value={branchId.value || null}
+        selectedLabel={branch.data?.name}
+        onchange={(next) => setQuery({ branch_id: next, page: null })}
         placeholder="All branches"
-        searchPlaceholder="Search branches…"
-        emptyText="No branches recorded."
-        loading={branches.isPending}
         clearable
         aria-label="Branch"
-        class="w-full sm:w-52"
-      />
-      <EnvironmentSelect
-        projectId={projectId.value}
-        value={environmentId.value || null}
-        onchange={(next) => setQuery({ environment_id: next, page: null })}
-        placeholder="Any environment"
-        clearable
-        class="w-full sm:w-52"
+        class="w-full sm:w-48"
       />
     {/if}
     <FilterSelect
@@ -208,18 +196,34 @@
       label="Recorded deployments"
       allLabel="Any deployment records"
     />
-    <DateRangeFilter
-      from={dateFrom.value}
-      to={dateTo.value}
-      onchange={({ from, to }) => setQuery({ date_from: from, date_to: to, page: null })}
-      label="Commit date"
-    />
-    <TagSelect
-      value={tagId.value || null}
-      onchange={(next) => setQuery({ tag_id: next, page: null })}
-      placeholder="Any tag"
-      class="w-full sm:w-44"
-    />
+    <MoreFilters activeCount={moreActive}>
+      {#if projectId.value !== ''}
+        <EnvironmentSelect
+          projectId={projectId.value}
+          value={environmentId.value || null}
+          onchange={(next) => setQuery({ environment_id: next, page: null })}
+          placeholder="Any environment"
+          aria-label="Environment"
+          clearable
+          class="w-full"
+        />
+      {/if}
+      <DateRangeFilter
+        from={dateFrom.value}
+        to={dateTo.value}
+        onchange={({ from, to }) => setQuery({ date_from: from, date_to: to, page: null })}
+        label="Commit date"
+      />
+      <TagSelect
+        value={tagId.value || null}
+        onchange={(next) => setQuery({ tag_id: next, page: null })}
+        placeholder="Any tag"
+        class="w-full"
+      />
+      {#if projectId.value === ''}
+        <p class="text-muted-foreground text-xs">Choose a project to filter by environment.</p>
+      {/if}
+    </MoreFilters>
     {#if releaseId.value !== ''}
       <span class="bg-muted text-foreground inline-flex h-8 items-center gap-1.5 rounded-lg border pr-1 pl-2.5 text-sm">
         <span class="text-muted-foreground">In release</span>
@@ -237,7 +241,7 @@
   </FilterBar>
 
   {#if commits.isPending}
-    <TableSkeleton rows={10} columns={6} />
+    <TableSkeleton rows={10} columns={4} />
   {:else if commits.isError}
     <ErrorState error={commits.error} onretry={() => commits.refetch()} retrying={commits.isFetching} />
   {:else if commits.data.data.length === 0}
@@ -266,62 +270,68 @@
       </EmptyState>
     {/if}
   {:else}
+    {@const showProject = projectId.value === ''}
     <DataTable label="Commits">
       <DataTableHeader>
         <DataTableRow>
-          <DataTableHead>Hash</DataTableHead>
-          <DataTableHead>Message</DataTableHead>
-          <DataTableHead sortKey="branch_name" sort={sort.value} order={order.value} {onsort} defaultOrder="asc">
-            Branch
-          </DataTableHead>
-          <DataTableHead>Project</DataTableHead>
+          <DataTableHead>Commit</DataTableHead>
+          {#if showProject}
+            <DataTableHead>Project</DataTableHead>
+          {/if}
           <DataTableHead sortKey="commit_date" sort={sort.value} order={order.value} {onsort} defaultOrder="desc">
-            Commit date
+            Date
           </DataTableHead>
-          <DataTableHead>Recorded deployments</DataTableHead>
+          <DataTableHead>Recorded in</DataTableHead>
         </DataTableRow>
       </DataTableHeader>
       <DataTableBody>
         {#each commits.data.data as commit (commit.id)}
-          <DataTableRow href={paths.commit(commit.id)}>
-            <DataTableCell>
-              <HashChip hash={commit.commit_hash} short={commit.short_hash} externalUrl={commit.external_url} />
-            </DataTableCell>
-            <DataTableCell class="max-w-sm min-w-56">
+          <DataTableRow
+            href={paths.commit(commit.id)}
+            onopen={() => panel.open(commit.id)}
+            selected={panel.id === commit.id}
+          >
+            <DataTableCell class="max-w-xl min-w-64">
               <a
                 href={paths.commit(commit.id)}
+                onclick={openInPanel(panel, commit.id)}
                 class="text-foreground hover:text-brand block truncate font-medium"
                 title={commitSubject(commit.commit_message)}
               >
                 {commitSubject(commit.commit_message)}
               </a>
-              {#if commit.author_name || commit.tags.length > 0}
-                <span class="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1">
-                  {#if commit.author_name}
-                    <span class="text-muted-foreground text-xs">{commit.author_name}</span>
-                  {/if}
-                  {#each commit.tags as tag (tag.id)}
-                    <TagBadge name={tag.name} color={tag.color} href={paths.commits({ tag_id: tag.id })} />
-                  {/each}
-                </span>
-              {/if}
+              <span class="text-muted-foreground mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs">
+                <code class="font-mono">{commit.short_hash}</code>
+                <span aria-hidden="true">·</span>
+                <a
+                  href={paths.branch(commit.branch_id)}
+                  class="hover:text-foreground inline-flex max-w-[28ch] items-center gap-1 font-mono"
+                  title={`Branch ${commit.branch.name}`}
+                >
+                  <GitBranchIcon class="size-3 shrink-0" aria-hidden="true" />
+                  <span class="truncate">{commit.branch.name}</span>
+                </a>
+                {#if commit.author_name}
+                  <span aria-hidden="true">·</span>
+                  <span>{commit.author_name}</span>
+                {/if}
+                {#each commit.tags as tag (tag.id)}
+                  <TagBadge name={tag.name} color={tag.color} href={paths.commits({ tag_id: tag.id })} />
+                {/each}
+              </span>
             </DataTableCell>
-            <DataTableCell>
-              <BranchBadge
-                name={commit.branch_name}
-                href={paths.commits({ project_id: commit.project_id, branch: commit.branch_name })}
-              />
-            </DataTableCell>
-            <DataTableCell>
-              <a href={paths.project(commit.project.id)} class="text-muted-foreground hover:text-foreground">
-                {commit.project.name}
-              </a>
-            </DataTableCell>
+            {#if showProject}
+              <DataTableCell>
+                <a href={paths.project(commit.project.id)} class="text-muted-foreground hover:text-foreground">
+                  {commit.project.name}
+                </a>
+              </DataTableCell>
+            {/if}
             <DataTableCell class="tabular text-muted-foreground">
               <DateTime value={commit.commit_date} mode="date" />
             </DataTableCell>
-            <DataTableCell wrap class="min-w-64">
-              <CommitDeploymentBadges environments={commit.environments} />
+            <DataTableCell wrap class="min-w-56">
+              <CommitDeploymentBadges environments={commit.environments} emptyText="No record" />
             </DataTableCell>
           </DataTableRow>
         {/each}
@@ -334,3 +344,16 @@
 </div>
 
 <CommitFormDialog bind:open={createOpen} projectId={projectId.value || undefined} />
+
+<DetailPanel
+  open={panel.id !== null}
+  onclose={panel.close}
+  label="Commit details"
+  fullPageHref={panel.id ? paths.commit(panel.id) : undefined}
+>
+  {#if panel.id}
+    {#key panel.id}
+      <CommitDetail commitId={panel.id} layout="panel" ondeleted={panel.close} />
+    {/key}
+  {/if}
+</DetailPanel>

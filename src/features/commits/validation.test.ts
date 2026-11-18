@@ -4,7 +4,7 @@ import { commitFormSchema, normalizeHashInput } from './validation';
 
 const valid = {
   project_id: 'p1',
-  branch_name: 'feature/checkout',
+  branch_id: 'b1',
   commit_hash: '9FCEB02D0AE598E95DC970B74767F19372D61AF8',
   commit_message: '  feat: add checkout flow  ',
   commit_date: '2026-03-01T10:30',
@@ -20,7 +20,7 @@ describe('commitFormSchema', () => {
     expect(result.ok).toBe(true);
     expect(result.data).toEqual({
       project_id: 'p1',
-      branch_name: 'feature/checkout',
+      branch_id: 'b1',
       commit_hash: '9fceb02d0ae598e95dc970b74767f19372d61af8',
       commit_message: 'feat: add checkout flow',
       commit_date: new Date('2026-03-01T10:30').toISOString(),
@@ -41,15 +41,8 @@ describe('commitFormSchema', () => {
     expect(check('').errors.commit_hash).toBe('Commit hash is required.');
   });
 
-  it('applies the Git branch rules the backend enforces', () => {
-    const check = (branch_name: string) => validateForm(commitFormSchema, { ...valid, branch_name });
-    expect(check('main').ok).toBe(true);
-    expect(check('release/2026.03').ok).toBe(true);
-    for (const bad of ['has space', 'a..b', '/leading', 'trailing/', 'dot.', 'a~1', 'a:b']) {
-      expect(check(bad).ok, bad).toBe(false);
-      expect(check(bad).errors.branch_name, bad).toBeTruthy();
-    }
-    expect(check('').errors.branch_name).toBe('Branch is required.');
+  it('requires a branch', () => {
+    expect(validateForm(commitFormSchema, { ...valid, branch_id: '' }).errors.branch_id).toBe('Choose a branch.');
   });
 
   it('requires project, message and a real date, and only allows http(s) links', () => {

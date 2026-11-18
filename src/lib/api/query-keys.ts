@@ -32,6 +32,8 @@ export const queryKeys = {
   auth: {
     all: ['auth'] as const,
     me: () => ['auth', 'me'] as const,
+    /** Public sign-in options (whether email features are available). */
+    options: () => ['auth', 'options'] as const,
   },
 
   dashboard: {
@@ -49,6 +51,8 @@ export const queryKeys = {
     compare: (projectId: string, params?: Params) =>
       ['environments', 'compare', projectId, params ?? {}] as const,
   },
+
+  branches: resource('branches'),
 
   commits: resource('commits'),
 

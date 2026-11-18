@@ -4,8 +4,12 @@ import { credentials } from './credentials';
 
 /**
  * The main user journey against the real stack (database + backend + UI):
- * login → project → environments → commits → deployment → history → release
- * → note (create, autosave, read) → search → logout.
+ * login → project → environments → commits (on the default branch and on a
+ * branch added from the form) → branch page → deployment → history and its
+ * side panel → release → note (create, autosave, read) → search → logout.
+ *
+ * Sign-in expects a backend without outgoing email (password only). With
+ * SMTP configured, a new browser is asked for an emailed code instead.
  *
  * Records are uniquely named per run and the project (which owns everything
  * created here) is deleted at the end, so the suite is repeatable on a
@@ -43,15 +47,24 @@ test.afterAll(async () => {
 
 const dialog = () => page.getByRole('dialog');
 
-async function recordCommit(hash: string, message: string) {
+async function recordCommit(hash: string, message: string, newBranch?: string) {
   await page.getByRole('button', { name: 'Record commit' }).first().click();
   await expect(dialog().getByRole('heading', { name: 'Record commit' })).toBeVisible();
+  // New commits start on the project's default branch.
+  const branch = dialog().getByRole('combobox', { name: /^Branch/ });
+  await expect(branch).toHaveText(/main/);
+  if (newBranch) {
+    await branch.click();
+    await page.getByPlaceholder('Search branches…').fill(newBranch);
+    await page.getByRole('option', { name: `Add branch “${newBranch}”` }).click();
+    await expect(branch).toHaveText(new RegExp(newBranch));
+  }
   // Pasted in upper case on purpose: the form normalises it.
   await dialog().getByLabel('Commit hash').fill(hash.toUpperCase());
   await dialog().getByLabel('Message').fill(message);
   await dialog().getByRole('button', { name: 'Record commit' }).click();
   await expect(dialog()).toBeHidden();
-  await expect(page.getByText(message).first()).toBeVisible();
+  await expect(page.getByText(`Commit ${hash.slice(0, 7)} recorded`)).toBeVisible();
 }
 
 test('1 · signs in', async () => {
@@ -97,13 +110,25 @@ test('3 · creates environments', async () => {
 test('4 · records commits', async () => {
   await page.goto(`/projects/${projectId}`);
   await recordCommit(commitHash, commitMessage);
-  await recordCommit(fixHash, fixMessage);
+  await recordCommit(fixHash, fixMessage, `fix/${run}`);
 
   // The commit list shows both, with the normalised short hash.
   await page.goto(`/commits?project_id=${projectId}`);
   await expect(page.getByText(commitMessage)).toBeVisible();
   await expect(page.getByText(fixMessage)).toBeVisible();
   await expect(page.getByText(commitHash.slice(0, 7)).first()).toBeVisible();
+});
+
+test('4b · lists branches and opens one', async () => {
+  await page.goto(`/projects/${projectId}/branches`);
+  await expect(page.getByRole('heading', { name: 'Branches', level: 1 })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'main', exact: true })).toBeVisible();
+
+  await page.getByRole('link', { name: `fix/${run}`, exact: true }).click();
+  await expect(page).toHaveURL(/\/branches\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole('heading', { name: `fix/${run}`, level: 1 })).toBeVisible();
+  await expect(page.getByText(fixMessage)).toBeVisible();
+  await expect(page.getByText(commitMessage)).toBeHidden();
 });
 
 test('5 · records a deployment', async () => {
@@ -130,9 +155,23 @@ test('6 · shows the deployment in the history and on the commit', async () => {
   await expect(entry.first()).toBeVisible();
   await expect(page.getByText('Successful').first()).toBeVisible();
 
+  // A record opens in a side panel over the list, with its own URL…
   await entry.first().click();
-  await expect(page).toHaveURL(/\/deployments\/[0-9a-f-]{36}$/);
+  await expect(page).toHaveURL(/\/deployments\?.*view=[0-9a-f-]{36}/);
+  const panel = page.getByRole('dialog', { name: 'Deployment record' });
   // Stored commands are shown as text to copy — never as something to run.
+  await expect(panel.getByText('sqlx migrate run')).toBeVisible();
+  // …that survives a reload and closes with Escape, keeping the list's filters.
+  await page.reload();
+  await expect(panel.getByText('sqlx migrate run')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+  await expect(page).toHaveURL(new RegExp(`/deployments\\?project_id=${projectId}$`));
+
+  // The full page still exists.
+  await entry.first().click();
+  await page.getByRole('link', { name: 'Open full page' }).click();
+  await expect(page).toHaveURL(/\/deployments\/[0-9a-f-]{36}$/);
   await expect(page.getByText('sqlx migrate run')).toBeVisible();
 
   // The other commit has no record: the UI says so without claiming it is not deployed.

@@ -1,7 +1,6 @@
 import { api } from '$lib/api/client';
 import type { ListParams } from '$lib/api/types';
 import type {
-  BranchSummary,
   Commit,
   CommitDeploymentFilter,
   CommitSort,
@@ -11,8 +10,8 @@ import type {
 
 export interface CommitListParams extends ListParams {
   project_id?: string;
-  /** Exact branch name. */
-  branch?: string;
+  /** Commits of this branch. */
+  branch_id?: string;
   /** Hash prefix. */
   hash?: string;
   /** RFC 3339, inclusive. */
@@ -40,7 +39,4 @@ export const commitsApi = {
    */
   remove: (id: string, options: { cascade?: boolean } = {}) =>
     api.del(`/commits/${id}`, { query: { cascade: options.cascade || undefined } }),
-  /** Distinct branch names of a project, most recently used first (max 200). */
-  branches: (projectId: string, signal?: AbortSignal) =>
-    api.get<BranchSummary[]>(`/projects/${projectId}/branches`, { signal }),
 };

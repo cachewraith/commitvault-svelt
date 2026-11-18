@@ -14,6 +14,13 @@ export const routes: RouteDefinition[] = [
     layout: 'auth',
     load: () => import('$features/auth/pages/LoginPage.svelte'),
   },
+  {
+    path: '/forgot-password',
+    title: 'Reset password',
+    access: 'guest',
+    layout: 'auth',
+    load: () => import('$features/auth/pages/ForgotPasswordPage.svelte'),
+  },
 
   { path: '/', title: 'Dashboard', load: () => import('$features/dashboard/pages/DashboardPage.svelte') },
 
@@ -21,6 +28,8 @@ export const routes: RouteDefinition[] = [
   { path: '/projects/:projectId', title: 'Project', load: () => import('$features/projects/pages/ProjectDetailPage.svelte') },
   { path: '/projects/:projectId/settings', title: 'Project settings', load: () => import('$features/projects/pages/ProjectSettingsPage.svelte') },
   { path: '/projects/:projectId/environments', title: 'Environments', load: () => import('$features/environments/pages/EnvironmentManagePage.svelte') },
+  { path: '/projects/:projectId/branches', title: 'Branches', load: () => import('$features/branches/pages/BranchListPage.svelte') },
+  { path: '/branches/:branchId', title: 'Branch', load: () => import('$features/branches/pages/BranchDetailPage.svelte') },
   { path: '/projects/:projectId/compare', title: 'Compare environments', load: () => import('$features/deployments/pages/EnvironmentComparePage.svelte') },
 
   { path: '/environments', title: 'Environments', load: () => import('$features/environments/pages/EnvironmentOverviewPage.svelte') },

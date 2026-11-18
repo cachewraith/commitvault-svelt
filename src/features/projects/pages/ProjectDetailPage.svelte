@@ -1,14 +1,19 @@
 <!--
-  Project overview: header, stats, environments with their latest recorded
-  deployment, and recent deployments, commits, releases and notes.
+  Project overview, kept to what is checked most: stats, environments with
+  their latest recorded deployment and recent deployment records; branches,
+  releases and notes in a narrow side column. Full lists are one click away
+  (stats and "View all"); rarer actions sit in the header's "More" menu.
 -->
 <script lang="ts">
   import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
+  import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
   import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+  import GitBranchIcon from '@lucide/svelte/icons/git-branch';
   import GitCommitIcon from '@lucide/svelte/icons/git-commit-horizontal';
   import GitCompareIcon from '@lucide/svelte/icons/git-compare-arrows';
   import PlusIcon from '@lucide/svelte/icons/plus';
   import RocketIcon from '@lucide/svelte/icons/rocket';
+  import ServerIcon from '@lucide/svelte/icons/server';
   import SettingsIcon from '@lucide/svelte/icons/settings';
   import { isApiError, queryKeys } from '$lib/api';
   import {
@@ -26,12 +31,12 @@
     toastError,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import { setPageTitle } from '$lib/router';
+  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+  import { navigate, setPageTitle } from '$lib/router';
   import { formatNumber, pluralize, safeExternalUrl } from '$lib/utils';
   import { paths } from '$routes/paths';
-  import { commitsApi } from '$features/commits/api';
+  import { branchesApi } from '$features/branches/api';
   import CommitFormDialog from '$features/commits/components/CommitFormDialog.svelte';
-  import CommitList from '$features/commits/components/CommitList.svelte';
   import { deploymentsApi } from '$features/deployments/api';
   import DeploymentFormDialog from '$features/deployments/components/DeploymentFormDialog.svelte';
   import DeploymentTimeline from '$features/deployments/components/DeploymentTimeline.svelte';
@@ -51,7 +56,7 @@
   const queryClient = useQueryClient();
 
   const RECENT = 8;
-  const SIDE = 5;
+  const SIDE = 4;
   const scope = $derived({ project_id: projectId });
   const recentParams = $derived({ project_id: projectId, per_page: RECENT });
   const sideParams = $derived({ project_id: projectId, per_page: SIDE });
@@ -72,9 +77,10 @@
     queryFn: ({ signal }) => deploymentsApi.list(recentParams, signal),
     enabled: loaded,
   }));
-  const commits = createQuery(() => ({
-    queryKey: queryKeys.commits.list(recentParams),
-    queryFn: ({ signal }) => commitsApi.list(recentParams, signal),
+  const branchParams = { per_page: SIDE };
+  const branches = createQuery(() => ({
+    queryKey: queryKeys.branches.list({ projectId, ...branchParams }),
+    queryFn: ({ signal }) => branchesApi.list(projectId, branchParams, signal),
     enabled: loaded,
   }));
   const releases = createQuery(() => ({
@@ -132,7 +138,7 @@
             <StatusBadge status="archived" />
           {/if}
           <span class="text-muted-foreground font-mono text-xs">{current.slug}</span>
-          <BranchBadge name={current.default_branch} />
+          <BranchBadge name={current.default_branch} href={paths.projectBranches(projectId)} />
           {#if repositoryUrl}
             <a
               href={repositoryUrl}
@@ -148,6 +154,9 @@
           {#each current.tags as tag (tag.id)}
             <TagBadge name={tag.name} color={tag.color} href={paths.projects({ tag_id: tag.id })} />
           {/each}
+          <span class="text-muted-foreground text-xs">
+            Last deployment recorded <DateTime value={stats.last_deployed_at} fallback="never" />
+          </span>
         </div>
       {/snippet}
       {#snippet actions()}
@@ -159,13 +168,34 @@
           <RocketIcon aria-hidden="true" />
           Record deployment
         </Button>
-        <Button variant="outline" href={paths.projectCompare(projectId)}>
-          <GitCompareIcon aria-hidden="true" />
-          Compare environments
-        </Button>
-        <Button variant="outline" size="icon" href={paths.projectSettings(projectId)} aria-label="Project settings">
-          <SettingsIcon aria-hidden="true" />
-        </Button>
+        <DropdownMenu.Root>
+          <DropdownMenu.Trigger>
+            {#snippet child({ props })}
+              <Button {...props} variant="outline" size="icon" aria-label="More project actions">
+                <EllipsisIcon aria-hidden="true" />
+              </Button>
+            {/snippet}
+          </DropdownMenu.Trigger>
+          <DropdownMenu.Content align="end" class="w-56">
+            <DropdownMenu.Item onSelect={() => navigate(paths.projectCompare(projectId))}>
+              <GitCompareIcon aria-hidden="true" />
+              Compare environments
+            </DropdownMenu.Item>
+            <DropdownMenu.Item onSelect={() => navigate(paths.projectBranches(projectId))}>
+              <GitBranchIcon aria-hidden="true" />
+              Branches
+            </DropdownMenu.Item>
+            <DropdownMenu.Item onSelect={() => navigate(paths.projectEnvironments(projectId))}>
+              <ServerIcon aria-hidden="true" />
+              Environments
+            </DropdownMenu.Item>
+            <DropdownMenu.Separator />
+            <DropdownMenu.Item onSelect={() => navigate(paths.projectSettings(projectId))}>
+              <SettingsIcon aria-hidden="true" />
+              Project settings
+            </DropdownMenu.Item>
+          </DropdownMenu.Content>
+        </DropdownMenu.Root>
       {/snippet}
     </PageHeader>
 
@@ -282,35 +312,37 @@
             <DeploymentTimeline deployments={deployments.data.data} label="Recent deployment records" />
           {/if}
         </Section>
-
-        <Section title="Recent commits" count={stats.commit_count} href={paths.commits(scope)}>
-          {#snippet actions()}
-            <Button variant="ghost" size="sm" onclick={() => (commitOpen = true)}>
-              <PlusIcon aria-hidden="true" />
-              Record
-            </Button>
-          {/snippet}
-          {#if commits.isPending}
-            <ListSkeleton rows={4} />
-          {:else if commits.isError}
-            <ErrorState error={commits.error} onretry={() => commits.refetch()} compact />
-          {:else if commits.data.data.length === 0}
-            <EmptyState
-              compact
-              title="No commits recorded"
-              description="Register the commits you want to remember: branch, hash and message."
-            >
-              {#snippet action()}
-                <Button variant="outline" size="sm" onclick={() => (commitOpen = true)}>Record commit</Button>
-              {/snippet}
-            </EmptyState>
-          {:else}
-            <CommitList commits={commits.data.data} label="Recent commits" />
-          {/if}
-        </Section>
       </div>
 
       <div class="flex min-w-0 flex-col gap-6">
+        <Section title="Branches" count={branches.data?.meta.total} href={paths.projectBranches(projectId)}>
+          {#if branches.isPending}
+            <ListSkeleton rows={3} />
+          {:else if branches.isError}
+            <ErrorState error={branches.error} onretry={() => branches.refetch()} compact />
+          {:else if branches.data.data.length === 0}
+            <EmptyState compact title="No branches yet" description="Branches appear here once you create one.">
+              {#snippet action()}
+                <Button variant="outline" size="sm" href={paths.projectBranches(projectId)}>Manage branches</Button>
+              {/snippet}
+            </EmptyState>
+          {:else}
+            <ul class="bg-card divide-y rounded-lg border" aria-label="Branches with the most recent commits">
+              {#each branches.data.data as branch (branch.id)}
+                <li class="flex items-center gap-2 px-4 py-2 text-sm">
+                  <GitBranchIcon class="text-muted-foreground size-3.5 shrink-0" aria-hidden="true" />
+                  <a href={paths.branch(branch.id)} class="hover:text-brand min-w-0 flex-1 truncate font-mono text-xs">
+                    {branch.name}
+                  </a>
+                  <span class="text-muted-foreground tabular shrink-0 text-xs">
+                    {pluralize(branch.commit_count, 'commit')}
+                  </span>
+                </li>
+              {/each}
+            </ul>
+          {/if}
+        </Section>
+
         <Section title="Releases" count={stats.release_count} href={paths.releases(scope)}>
           {#snippet actions()}
             <Button variant="ghost" size="sm" onclick={() => (releaseOpen = true)}>
@@ -361,17 +393,6 @@
               <NoteList notes={notes.data.data} label="Recently edited notes" />
             </div>
           {/if}
-        </Section>
-
-        <Section title="Details">
-          <dl class="bg-card grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 rounded-lg border px-4 py-3 text-sm">
-            <dt class="text-muted-foreground">Created</dt>
-            <dd class="tabular"><DateTime value={current.created_at} mode="date" /></dd>
-            <dt class="text-muted-foreground">Updated</dt>
-            <dd class="tabular"><DateTime value={current.updated_at} /></dd>
-            <dt class="text-muted-foreground">Last recorded deployment</dt>
-            <dd class="tabular"><DateTime value={stats.last_deployed_at} fallback="None recorded" /></dd>
-          </dl>
         </Section>
       </div>
     </div>

@@ -1,3 +1,4 @@
+import type { Branch } from '$features/branches/types';
 import type { Deployment } from '$features/deployments/types';
 import type { Commit } from '../../types';
 
@@ -30,7 +31,8 @@ export function commit(overrides: Partial<Commit> = {}): Commit {
     id: 'c1',
     project_id: 'p1',
     project: { id: 'p1', name: 'Shop', slug: 'shop' },
-    branch_name: 'main',
+    branch_id: 'b1',
+    branch: { id: 'b1', name: 'main' },
     commit_hash: HASH,
     short_hash: '9fceb02',
     commit_message: 'feat: add checkout flow',
@@ -88,6 +90,22 @@ export function deployment(overrides: Partial<Deployment> = {}): Deployment {
     created_at: '2026-03-02T09:05:00Z',
     updated_at: '2026-03-02T09:05:00Z',
     tags: [],
+    ...overrides,
+  };
+}
+
+export function branch(overrides: Partial<Branch> = {}): Branch {
+  return {
+    id: 'b-develop',
+    project_id: 'p1',
+    project: { id: 'p1', name: 'Shop', slug: 'shop' },
+    name: 'develop',
+    description: null,
+    is_default: true,
+    commit_count: 3,
+    last_commit_at: '2026-03-01T10:00:00Z',
+    created_at: '2026-01-01T00:00:00Z',
+    updated_at: '2026-01-01T00:00:00Z',
     ...overrides,
   };
 }

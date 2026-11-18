@@ -11,7 +11,7 @@
   import { cn } from '$lib/utils/cn';
   import { commitsApi } from '../api';
   import { commitOption, commitSubject } from '../format';
-  import type { CommitBrief } from '../types';
+  import type { Commit, CommitBrief } from '../types';
 
   interface Props {
     projectId: string;
@@ -53,7 +53,7 @@
 
   // Every commit seen so far (passed in or returned by a search), so a chosen
   // commit keeps its label after the search text changes.
-  let seen = $state.raw(new Map<string, CommitBrief>());
+  let seen = $state.raw(new Map<string, Commit | CommitBrief>());
   $effect(() => {
     const incoming = [...selected, ...(results.data?.data ?? [])];
     if (incoming.every((commit) => seen.has(commit.id))) return;
@@ -63,7 +63,7 @@
   });
 
   const options = $derived((results.data?.data ?? []).map(commitOption));
-  const chosen = $derived(values.map((commitId) => seen.get(commitId)).filter((c): c is CommitBrief => !!c));
+  const chosen = $derived(values.map((commitId) => seen.get(commitId)).filter((c): c is Commit | CommitBrief => !!c));
   const selectedOptions = $derived(chosen.map(commitOption));
 
   function remove(commitId: string) {

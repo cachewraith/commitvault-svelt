@@ -4,8 +4,8 @@
   project picker.
 
   CommitVault never talks to Git: everything here is typed or pasted by the
-  user, so the form is tuned for that (hash normalisation, branch suggestions,
-  "Record another").
+  user, so the form is tuned for that (hash normalisation, picking or adding a
+  branch inline, "Record another").
 -->
 <script lang="ts">
   import { tick, untrack } from 'svelte';
@@ -20,6 +20,8 @@
   import { toDateTimeInputValue } from '$lib/utils/format';
   import { isCommitHash, shortHash } from '$lib/utils/hash';
   import { validateForm } from '$lib/validators';
+  import { branchesApi } from '$features/branches/api';
+  import BranchSelect from '$features/branches/components/BranchSelect.svelte';
   import { projectsApi } from '$features/projects/api';
   import ProjectSelect from '$features/projects/components/ProjectSelect.svelte';
   import TagPicker from '$features/tags/components/TagPicker.svelte';
@@ -30,14 +32,17 @@
   interface Props {
     open?: boolean;
     projectId?: string;
+    /** Preselected branch for a new commit (requires `projectId`). */
+    branchId?: string;
+    /** Its name, shown until the picker has loaded it. */
+    branchName?: string;
     commit?: Commit;
     onsaved?: (commit: Commit) => void;
   }
 
-  let { open = $bindable(false), projectId, commit, onsaved }: Props = $props();
+  let { open = $bindable(false), projectId, branchId, branchName, commit, onsaved }: Props = $props();
 
   const queryClient = useQueryClient();
-  const uid = $props.id();
 
   const isEdit = $derived(commit !== undefined);
   /** The project cannot change when it was given by the caller or the commit exists. */
@@ -46,7 +51,7 @@
   function initialValues() {
     return {
       project_id: commit?.project_id ?? projectId ?? '',
-      branch_name: commit?.branch_name ?? '',
+      branch_id: commit?.branch_id ?? branchId ?? '',
       commit_hash: commit?.commit_hash ?? '',
       commit_message: commit?.commit_message ?? '',
       commit_date: toDateTimeInputValue(commit?.commit_date ?? new Date()),
@@ -59,7 +64,9 @@
 
   let values = $state(initialValues());
   let errors = $state<FieldErrors>({});
-  /** Once the user edits the branch we stop following the project's default branch. */
+  /** Name shown for the selected branch before the picker has loaded it. */
+  let branchLabel = $state<string | undefined>(undefined);
+  /** Once the user picks a branch we stop following the project's default branch. */
   let branchTouched = $state(false);
   let recordAnother = $state(false);
   let form = $state<HTMLFormElement | null>(null);
@@ -73,8 +80,9 @@
     if (isOpen && !wasOpen) {
       untrack(() => {
         values = initialValues();
+        branchLabel = commit?.branch.name ?? branchName;
         errors = {};
-        branchTouched = isEdit;
+        branchTouched = isEdit || branchId !== undefined;
         recordAnother = false;
       });
     }
@@ -88,18 +96,23 @@
     staleTime: 60_000,
   }));
 
-  const branches = createQuery(() => ({
-    queryKey: [...queryKeys.commits.all, 'branches', values.project_id] as const,
-    queryFn: ({ signal }) => commitsApi.branches(values.project_id, signal),
-    enabled: open && values.project_id !== '',
+  // The project's default branch, to preselect it for new commits.
+  const defaultBranchParams = $derived({ search: project.data?.default_branch, per_page: 10 });
+  const defaultBranch = createQuery(() => ({
+    queryKey: queryKeys.branches.list({ projectId: values.project_id, ...defaultBranchParams }),
+    queryFn: ({ signal }) => branchesApi.list(values.project_id, defaultBranchParams, signal),
+    enabled: open && !branchTouched && project.data?.id === values.project_id,
     staleTime: 60_000,
   }));
 
-  // New commits start on the project's default branch until the user types one.
+  // New commits start on the project's default branch until the user picks one.
   $effect(() => {
-    const loaded = project.data;
-    if (!open || branchTouched || !loaded || loaded.id !== values.project_id) return;
-    untrack(() => (values.branch_name = loaded.default_branch));
+    const found = defaultBranch.data?.data.find((branch) => branch.is_default);
+    if (!open || branchTouched || !found || found.project_id !== values.project_id) return;
+    untrack(() => {
+      values.branch_id = found.id;
+      branchLabel = found.name;
+    });
   });
 
   const projectName = $derived(commit?.project.name ?? project.data?.name);
@@ -121,11 +134,13 @@
     values.project_id = next ?? '';
     // A different project has different branches and a different default.
     branchTouched = false;
-    values.branch_name = '';
+    values.branch_id = '';
+    branchLabel = undefined;
   }
 
   function invalidate() {
     void queryClient.invalidateQueries({ queryKey: queryKeys.commits.all });
+    void queryClient.invalidateQueries({ queryKey: queryKeys.branches.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.releases.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
     void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
@@ -238,25 +253,22 @@
       </FormField>
 
       <div class="grid gap-4 sm:grid-cols-2">
-        <FormField label="Branch" error={errors.branch_name} required>
+        <FormField label="Branch" error={errors.branch_id} hint="Pick a branch, or type a new name to add it." required>
           {#snippet children(field)}
-            <Input
-              {...field}
-              bind:value={values.branch_name}
-              oninput={() => (branchTouched = true)}
-              class="font-mono"
-              maxlength={255}
-              autocomplete="off"
-              autocapitalize="off"
-              spellcheck="false"
-              list="{uid}-branches"
-              placeholder="main"
+            <BranchSelect
+              id={field.id}
+              aria-invalid={field['aria-invalid']}
+              aria-describedby={field['aria-describedby']}
+              projectId={values.project_id || null}
+              value={values.branch_id || null}
+              selectedLabel={branchLabel}
+              onchange={(next, branch) => {
+                branchTouched = true;
+                values.branch_id = next ?? '';
+                branchLabel = branch?.name;
+              }}
+              allowCreate
             />
-            <datalist id="{uid}-branches">
-              {#each branches.data ?? [] as branch (branch.name)}
-                <option value={branch.name}></option>
-              {/each}
-            </datalist>
           {/snippet}
         </FormField>
 

@@ -2,9 +2,9 @@ import { render, screen, waitFor } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { clearCsrfToken } from '$lib/api/client';
-import { apiError, data, mockApi } from '../../__tests__/fixtures/api';
+import { apiError, data, list, mockApi } from '../../__tests__/fixtures/api';
 import QueryHarness from '../../__tests__/fixtures/QueryHarness.svelte';
-import { HASH, commit, project } from '../../__tests__/fixtures/records';
+import { HASH, branch, commit, project } from '../../__tests__/fixtures/records';
 import CommitFormDialog from '../CommitFormDialog.svelte';
 
 // Pickers owned by other features are replaced by plain inputs.
@@ -17,8 +17,7 @@ vi.mock('$features/tags/components/TagPicker.svelte', async () => ({
 
 const baseRoutes = {
   'GET /projects/p1': () => data(project),
-  'GET /projects/p1/branches': () =>
-    data([{ name: 'main', commit_count: 3, last_commit_at: '2026-03-01T10:00:00Z' }]),
+  'GET /projects/p1/branches': () => list([branch()]),
 };
 
 function renderDialog(props: Record<string, unknown> = {}) {
@@ -36,7 +35,7 @@ describe('CommitFormDialog', () => {
     renderDialog();
 
     // The branch is prefilled from the project's default branch.
-    await waitFor(() => expect(screen.getByLabelText(/^Branch/)).toHaveValue('develop'));
+    await waitFor(() => expect(screen.getByLabelText(/^Branch/)).toHaveTextContent('develop'));
     await user.click(screen.getByRole('button', { name: 'Record commit' }));
 
     expect(await screen.findByText('Commit hash is required.')).toBeInTheDocument();
@@ -68,7 +67,7 @@ describe('CommitFormDialog', () => {
     });
     renderDialog({ onsaved });
 
-    await waitFor(() => expect(screen.getByLabelText(/^Branch/)).toHaveValue('develop'));
+    await waitFor(() => expect(screen.getByLabelText(/^Branch/)).toHaveTextContent('develop'));
     const hash = screen.getByLabelText(/^Commit hash/);
     await user.click(hash);
     await user.paste(`  ${HASH.toUpperCase()}\n`);
@@ -86,7 +85,7 @@ describe('CommitFormDialog', () => {
     const [post] = api.find('POST', '/projects/p1/commits');
     expect(post!.headers['X-CSRF-Token']).toBe('test-token');
     expect(post!.body).toEqual({
-      branch_name: 'develop',
+      branch_id: 'b-develop',
       commit_hash: HASH,
       commit_message: 'feat: add checkout flow',
       commit_date: new Date('2026-03-01T10:30').toISOString(),
@@ -129,7 +128,7 @@ describe('CommitFormDialog', () => {
       ...baseRoutes,
       'POST /projects/p1/commits': () =>
         apiError(422, 'validation_failed', 'Validation failed', {
-          branch_name: ['Is not a valid Git branch name'],
+          branch_id: ['Choose a branch of this project'],
         }),
     });
     renderDialog();
@@ -138,7 +137,7 @@ describe('CommitFormDialog', () => {
     await user.type(screen.getByLabelText(/^Message/), 'fix: thing');
     await user.click(screen.getByRole('button', { name: 'Record commit' }));
 
-    expect(await screen.findByText('Is not a valid Git branch name')).toBeInTheDocument();
+    expect(await screen.findByText('Choose a branch of this project')).toBeInTheDocument();
     expect(screen.getByLabelText(/^Branch/)).toHaveAttribute('aria-invalid', 'true');
   });
 
@@ -150,9 +149,7 @@ describe('CommitFormDialog', () => {
     });
     renderDialog();
 
-    await waitFor(() => expect(screen.getByLabelText(/^Branch/)).toHaveValue('develop'));
-    await user.clear(screen.getByLabelText(/^Branch/));
-    await user.type(screen.getByLabelText(/^Branch/), 'feature/cart');
+    await waitFor(() => expect(screen.getByLabelText(/^Branch/)).toHaveTextContent('develop'));
     await user.type(screen.getByLabelText(/^Commit hash/), 'a1b2c3d4');
     await user.type(screen.getByLabelText(/^Message/), 'feat: cart');
     await user.click(screen.getByRole('checkbox', { name: 'Record another' }));
@@ -161,7 +158,7 @@ describe('CommitFormDialog', () => {
     await waitFor(() => expect(api.find('POST', '/projects/p1/commits')).toHaveLength(1));
     await waitFor(() => expect(screen.getByLabelText(/^Commit hash/)).toHaveValue(''));
     expect(screen.getByLabelText(/^Message/)).toHaveValue('');
-    expect(screen.getByLabelText(/^Branch/)).toHaveValue('feature/cart');
+    expect(screen.getByLabelText(/^Branch/)).toHaveTextContent('develop');
     expect(screen.getByLabelText(/^Commit hash/)).toHaveFocus();
     expect(screen.getByRole('dialog')).toBeInTheDocument();
   });
@@ -177,7 +174,7 @@ describe('CommitFormDialog', () => {
 
     expect(screen.getByRole('heading', { name: 'Edit commit' })).toBeInTheDocument();
     expect(screen.getByLabelText(/^Commit hash/)).toHaveValue(HASH);
-    expect(screen.getByLabelText(/^Branch/)).toHaveValue('main');
+    expect(screen.getByLabelText(/^Branch/)).toHaveTextContent('main');
 
     await user.clear(screen.getByLabelText(/^Message/));
     await user.type(screen.getByLabelText(/^Message/), 'feat: checkout');
@@ -189,6 +186,32 @@ describe('CommitFormDialog', () => {
     expect(body).not.toHaveProperty('project_id');
     expect(body.commit_message).toBe('feat: checkout');
     expect(body.author_name).toBeNull();
-    expect(body.branch_name).toBe('main');
+    expect(body.branch_id).toBe('b1');
+  });
+
+  it('adds a new branch from the picker and records the commit on it', async () => {
+    const user = userEvent.setup();
+    const api = mockApi({
+      ...baseRoutes,
+      'POST /projects/p1/branches': () =>
+        data(branch({ id: 'b-cart', name: 'feature/cart', is_default: false, commit_count: 0 }), { status: 201 }),
+      'POST /projects/p1/commits': () => data(commit(), { status: 201 }),
+    });
+    renderDialog();
+
+    await waitFor(() => expect(screen.getByLabelText(/^Branch/)).toHaveTextContent('develop'));
+    await user.click(screen.getByLabelText(/^Branch/));
+    await user.type(await screen.findByPlaceholderText('Search branches…'), 'feature/cart');
+    await user.click(await screen.findByText('Add branch “feature/cart”'));
+
+    await waitFor(() => expect(api.find('POST', '/projects/p1/branches')).toHaveLength(1));
+    expect(api.find('POST', '/projects/p1/branches')[0]!.body).toEqual({ name: 'feature/cart' });
+    await waitFor(() => expect(screen.getByLabelText(/^Branch/)).toHaveTextContent('feature/cart'));
+
+    await user.type(screen.getByLabelText(/^Commit hash/), 'a1b2c3d4');
+    await user.type(screen.getByLabelText(/^Message/), 'feat: cart');
+    await user.click(screen.getByRole('button', { name: 'Record commit' }));
+    await waitFor(() => expect(api.find('POST', '/projects/p1/commits')).toHaveLength(1));
+    expect((api.find('POST', '/projects/p1/commits')[0]!.body as Record<string, unknown>).branch_id).toBe('b-cart');
   });
 });

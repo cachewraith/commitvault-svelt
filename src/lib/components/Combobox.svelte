@@ -11,6 +11,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import ChevronsUpDownIcon from '@lucide/svelte/icons/chevrons-up-down';
+  import PlusIcon from '@lucide/svelte/icons/plus';
   import XIcon from '@lucide/svelte/icons/x';
   import * as Command from '$lib/components/ui/command';
   import * as Popover from '$lib/components/ui/popover';
@@ -32,6 +33,10 @@
     onsearch?: (query: string) => void;
     searchDelay?: number;
     loading?: boolean;
+    /** Offer an "Add «text»" item when the search text matches no option label. */
+    oncreate?: (label: string) => void;
+    /** Text of that item; receives the trimmed search text. */
+    createLabel?: (label: string) => string;
     /** Show a button that resets the value to `null`. */
     clearable?: boolean;
     disabled?: boolean;
@@ -54,6 +59,8 @@
     onsearch,
     searchDelay = 250,
     loading = false,
+    oncreate,
+    createLabel = (label: string) => `Create “${label}”`,
     clearable = false,
     disabled = false,
     id,
@@ -68,6 +75,18 @@
 
   const selected = $derived(options.find((option) => option.value === value));
   const label = $derived(selected?.label ?? (value ? selectedLabel : undefined));
+  const trimmedSearch = $derived(search.trim());
+  const canCreate = $derived(
+    Boolean(oncreate) &&
+      trimmedSearch !== '' &&
+      !options.some((option) => option.label.toLowerCase() === trimmedSearch.toLowerCase()),
+  );
+
+  function create() {
+    oncreate?.(trimmedSearch);
+    open = false;
+    search = '';
+  }
 
   // The delay is fixed for the lifetime of the component.
   // svelte-ignore state_referenced_locally
@@ -124,7 +143,7 @@
           <Command.Loading class="text-muted-foreground px-3 py-4 text-center text-sm">
             Loading…
           </Command.Loading>
-        {:else}
+        {:else if !canCreate}
           <Command.Empty class="text-muted-foreground px-3 py-4 text-center text-sm">
             {emptyText}
           </Command.Empty>
@@ -146,6 +165,12 @@
               </span>
             </Command.Item>
           {/each}
+          {#if canCreate}
+            <Command.Item value={`__create__${trimmedSearch}`} forceMount onSelect={create}>
+              <PlusIcon aria-hidden="true" />
+              <span class="truncate">{createLabel(trimmedSearch)}</span>
+            </Command.Item>
+          {/if}
         </Command.Group>
       </Command.List>
     </Command.Root>

@@ -4,13 +4,7 @@
  */
 import { z } from 'zod';
 import { fromDateTimeInputValue } from '$lib/utils/format';
-import { branchName, commitHash, optionalHttpUrl, optionalText, requiredText } from '$lib/validators';
-
-/** Git also refuses these shapes; the backend rejects them with a 422. */
-const gitBranchName = branchName.refine(
-  (value) => !value.includes('..') && !value.startsWith('/') && !value.endsWith('/') && !value.endsWith('.'),
-  'Branch names cannot contain "..", start or end with "/", or end with ".".',
-);
+import { commitHash, optionalHttpUrl, optionalText, requiredText } from '$lib/validators';
 
 /** `<input type="datetime-local">` value → RFC 3339 UTC instant. */
 export const localDateTime = (label: string) =>
@@ -22,7 +16,7 @@ export const localDateTime = (label: string) =>
 
 export const commitFormSchema = z.object({
   project_id: z.string().min(1, 'Choose a project.'),
-  branch_name: gitBranchName,
+  branch_id: z.string().min(1, 'Choose a branch.'),
   commit_hash: commitHash,
   commit_message: requiredText('Message', 2000),
   commit_date: localDateTime('Commit date'),

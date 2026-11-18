@@ -11,6 +11,7 @@ export { default as SearchInput } from './SearchInput.svelte';
 export { default as FormField } from './FormField.svelte';
 export type { FieldControlProps } from './FormField.svelte';
 export { default as FilterBar } from './FilterBar.svelte';
+export { default as MoreFilters } from './MoreFilters.svelte';
 export { default as DateRangeFilter } from './DateRangeFilter.svelte';
 export type { DateRange } from './DateRangeFilter.svelte';
 export { default as Combobox } from './Combobox.svelte';
@@ -25,6 +26,7 @@ export { default as EnvironmentBadge } from './EnvironmentBadge.svelte';
 export { default as TagBadge } from './TagBadge.svelte';
 export { default as DateTime } from './DateTime.svelte';
 export { default as CopyButton } from './CopyButton.svelte';
+export { default as DetailPanel } from './DetailPanel.svelte';
 
 export { default as RichTextEditor } from './RichTextEditor.svelte';
 export { default as RichTextViewer } from './RichTextViewer.svelte';

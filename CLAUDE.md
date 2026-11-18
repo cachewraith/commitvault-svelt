@@ -89,12 +89,14 @@ Aliases: `$lib` → `src/lib`, `$features` → `src/features`, `$routes` → `sr
 | `/projects/:projectId/settings` | `projects/pages/ProjectSettingsPage.svelte` | `projectId` |
 | `/projects/:projectId/environments` | `environments/pages/EnvironmentManagePage.svelte` | `projectId` |
 | `/projects/:projectId/compare` | `deployments/pages/EnvironmentComparePage.svelte` | `projectId` (+ `?base=&target=`) |
+| `/projects/:projectId/branches` | `branches/pages/BranchListPage.svelte` | `projectId` |
+| `/branches/:branchId` | `branches/pages/BranchDetailPage.svelte` | `branchId` |
 | `/environments` | `environments/pages/EnvironmentOverviewPage.svelte` | — |
-| `/commits` | `commits/pages/CommitListPage.svelte` | — |
+| `/commits` | `commits/pages/CommitListPage.svelte` | — (`?view=<id>` opens the side panel) |
 | `/commits/:commitId` | `commits/pages/CommitDetailPage.svelte` | `commitId` |
-| `/deployments` | `deployments/pages/DeploymentHistoryPage.svelte` | — |
+| `/deployments` | `deployments/pages/DeploymentHistoryPage.svelte` | — (`?view=<id>` opens the side panel) |
 | `/deployments/:deploymentId` | `deployments/pages/DeploymentDetailPage.svelte` | `deploymentId` |
-| `/releases` | `releases/pages/ReleaseListPage.svelte` | — |
+| `/releases` | `releases/pages/ReleaseListPage.svelte` | — (`?view=<id>` opens the side panel) |
 | `/releases/:releaseId` | `releases/pages/ReleaseDetailPage.svelte` | `releaseId` |
 | `/notes` | `notes/pages/NoteListPage.svelte` | — |
 | `/notes/new` and `/notes/:noteId/edit` | `notes/pages/NoteEditorPage.svelte` | `noteId?` (undefined = create) |
@@ -103,7 +105,13 @@ Aliases: `$lib` → `src/lib`, `$features` → `src/features`, `$routes` → `sr
 | `/search` | `search/pages/SearchPage.svelte` | — (`?q=`) |
 | `/settings` | `settings/pages/SettingsPage.svelte` | — |
 
-Also: `auth/pages/LoginPage.svelte` (`/login`, guest) and `errors/pages/NotFoundPage.svelte` (fallback).
+Also: `auth/pages/LoginPage.svelte` (`/login`, guest — password step, then the emailed-code step when the
+API answers `code_required`), `auth/pages/ForgotPasswordPage.svelte` (`/forgot-password`, guest) and
+`errors/pages/NotFoundPage.svelte` (fallback).
+
+Detail pages of commits, deployments and releases are thin wrappers around
+`<feature>/components/<Record>Detail.svelte` (`layout="page" | "panel"`, `ondeleted`); the list pages
+render the same component inside `DetailPanel`. Notes keep their full-page reading view.
 
 ### Shared feature components (import these instead of rebuilding them)
 
@@ -113,9 +121,12 @@ Also: `auth/pages/LoginPage.svelte` (`/login`, guest) and `errors/pages/NotFound
 | `projects/components/ProjectFormDialog` | create / edit a project |
 | `environments/components/EnvironmentSelect` | environment picker for one project (`projectId`) |
 | `environments/components/EnvironmentFormDialog` | create / edit an environment |
+| `branches/components/BranchSelect` | searchable branch picker of one project (`projectId`, `value`, `selectedLabel`, `allowCreate` adds a branch inline) |
+| `branches/components/BranchFormDialog` | create / rename / describe a branch |
 | `tags/components/TagPicker` | multi select with create-on-the-fly → bind to a form's `tag_ids` |
 | `tags/components/TagSelect` | single tag filter (`tag_id`) |
-| `commits/components/CommitFormDialog` | record / edit a commit (the quick-create form) |
+| `commits/components/CommitFormDialog` | record / edit a commit (the quick-create form; `branchId`/`branchName` preselect a branch) |
+| `commits/components/CommitDetail`, `deployments/components/DeploymentDetail`, `releases/components/ReleaseDetail` | record views for a full page or the side panel |
 | `commits/components/CommitPicker`, `CommitMultiPicker` | pick one / many commits of a project (server-side search) |
 | `commits/components/CommitList` | compact read-only commit list for embedding |
 | `deployments/components/DeploymentFormDialog` | record / edit a deployment record (locks whatever ids are passed) |
@@ -157,6 +168,11 @@ navigate(paths.commits(), { replace: true });  // replace
 router.back('/commits');                       // history.back() with fallback
 
 setQuery({ status: 'failed', page: null });    // merge into ?query (replaceState; null/''/undefined removes)
+
+const panel = detailPanel();                   // side-panel URL state: ?view=<id>
+panel.open(id);                                // pushes a history entry → Back closes it
+panel.close();                                 // history.back() for our entry, else drops ?view
+<a href={paths.commit(id)} onclick={openInPanel(panel, id)}>  // modifier clicks keep the full page
 setPageTitle(project.name);                    // document.title = "<name> · CommitVault"
 ```
 
@@ -232,7 +248,7 @@ are in `$lib/api/types`; hand-written primitives (statuses, `RichTextDoc`, `User
 [resource, <named>, ...]        special reads (environments.byProject / .compare, notes.categories, search.results)
 ```
 
-Available: `queryKeys.dashboard | projects | environments | commits | deployments | releases | notes | tags | search | auth`.
+Available: `queryKeys.dashboard | projects | environments | branches | commits | deployments | releases | notes | tags | search | auth`.
 After a mutation invalidate the resource's `.all` **and** anything derived from it — at minimum
 `queryKeys.dashboard.all`; deployments also affect `queryKeys.environments.all` and
 `queryKeys.commits.all` (deployment status/counts); tag changes affect every tagged resource.
@@ -428,8 +444,10 @@ Import shared components from the barrel `$lib/components`; shadcn primitives fr
 | `SearchInput` | →`onsearch(value)`, `value`, `label`, `placeholder`, `delay=300`, `disabled`, `ref` (bindable) | Debounced; Enter commits now; Esc/× clears; follows external `value`. |
 | `FormField` | →`label`, →`children(field)` snippet, `error`, `hint`, `required`, `optional`, `hideLabel`, `labelAside` | Spread `field` on the control. |
 | `FilterBar` | →`children`, `actions` snippet, `active`, `onreset`, `label` | "Clear filters" appears when `active`. |
+| `MoreFilters` | →`children`, `activeCount`, `label` | Popover for secondary filters inside a `FilterBar`; the button shows how many are set. Keep search, project and one or two key filters outside. |
+| `DetailPanel` | →`open`, →`onclose`, →`label`, `fullPageHref`, →`children` | Record details sliding in from the right (full width on small screens), with "Open full page". Drive it with `detailPanel()`. |
 | `DateRangeFilter` | →`onchange({from, to})`, `from`, `to`, `label`, `disabled` | Emits ISO start/end of the local day (`date_from`/`date_to`). |
-| `Combobox` | →`options: ComboboxOption[]`, `value` (bindable), `onchange`, `placeholder`, `clearable`, `onsearch` (server-side), `loading`, `selectedLabel`, FormField attrs | Searchable single select. |
+| `Combobox` | →`options: ComboboxOption[]`, `value` (bindable), `onchange`, `placeholder`, `clearable`, `onsearch` (server-side), `loading`, `selectedLabel`, `oncreate(label)`, `createLabel`, FormField attrs | Searchable single select; `oncreate` offers "Create «text»" for unmatched input. |
 | `MultiCombobox` | →`options`, `values` (bindable), `onchange`, `selectedOptions`, `oncreate(label)`, `max`, `onsearch`, `loading` | Searchable multi select (tags, release commits). |
 | `StatusBadge` | →`status`, `variant: 'badge'｜'dot'` | Deployment / release / project statuses; label always shown. |
 | `HashChip` | →`hash`, `short`, `full`, `href`, `externalUrl`, `copyable` | Monospace hash + copy (copies the full hash) + optional Git-host link. |
@@ -438,7 +456,7 @@ Import shared components from the barrel `$lib/components`; shadcn primitives fr
 | `TagBadge` | →`name`, `color`, `href`, `onremove` | Pill; remove button when `onremove`. |
 | `DateTime` | →`value`, `mode: 'relative'｜'date'｜'datetime'｜'both'`, `fallback` | `<time>` with full date in `title`. |
 | `CopyButton` | →`value`, `label`, `text`, `variant`, `size`, `oncopied` | Check-mark feedback, announces "Copied". |
-| `DataTable` + `DataTableHeader/Body/Row/Head/Cell` | `DataTable`: →`label`, `footer` snippet · `Row`: `href`, `selected` · `Head`: `sortKey`, `sort`, `order`, `onsort(sort, order)`, `defaultOrder`, `align` · `Cell`: `align`, `wrap`, `colspan` | Dense bordered table; sortable headers set `aria-sort`. A row `href` is a mouse convenience — still put a real link in a cell. |
+| `DataTable` + `DataTableHeader/Body/Row/Head/Cell` | `DataTable`: →`label`, `footer` snippet · `Row`: `href`, `onopen`, `selected` · `Head`: `sortKey`, `sort`, `order`, `onsort(sort, order)`, `defaultOrder`, `align` · `Cell`: `align`, `wrap`, `colspan` | Dense bordered table; sortable headers set `aria-sort`. A row `href` is a mouse convenience — still put a real link in a cell. |
 | `Timeline` + `TimelineItem` | `Timeline`: →`label` · `Item`: →`title` snippet, `meta` snippet, `tone`, `icon`, `children` | Deployment history. Use the status tone. |
 | `RichTextEditor` | `value: RichTextDoc｜null`, `onchange(doc)`, `placeholder`, `disabled`, `label`, `autofocus`, `minHeight`, `invalid`, `describedBy` | Tiptap; lazy chunk. Keep `value` in `$state.raw`. |
 | `RichTextViewer` | `value`, `emptyText` | Read-only render through Tiptap's schema. |

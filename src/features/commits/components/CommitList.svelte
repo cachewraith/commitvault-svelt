@@ -8,7 +8,7 @@
 <script lang="ts">
   import { BranchBadge, DateTime, HashChip } from '$lib/components';
   import { paths } from '$routes/paths';
-  import { commitSubject, isFullCommit } from '../format';
+  import { branchNameOf, commitSubject, isFullCommit } from '../format';
   import type { Commit, CommitBrief } from '../types';
   import CommitDeploymentBadges from './CommitDeploymentBadges.svelte';
 
@@ -46,7 +46,7 @@
           <DateTime value={commit.commit_date} mode="relative" class="text-muted-foreground tabular shrink-0 text-xs" />
         </div>
         <div class="flex flex-wrap items-center gap-x-3 gap-y-1">
-          <BranchBadge name={commit.branch_name} />
+          <BranchBadge name={branchNameOf(commit)} href={full ? paths.branch(full.branch_id) : undefined} />
           {#if showProject && full}
             <a href={paths.project(full.project.id)} class="text-muted-foreground hover:text-foreground text-xs">
               {full.project.name}

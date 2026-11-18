@@ -9,13 +9,13 @@
   import { Combobox } from '$lib/components';
   import { commitsApi } from '../api';
   import { commitOption } from '../format';
-  import type { CommitBrief } from '../types';
+  import type { Commit, CommitBrief } from '../types';
 
   interface Props {
     projectId: string | null;
     /** Selected commit id. */
     value?: string | null;
-    selected?: CommitBrief | null;
+    selected?: Commit | CommitBrief | null;
     onchange?: (commitId: string | null) => void;
     placeholder?: string;
     disabled?: boolean;

@@ -7,12 +7,16 @@ import { buildPath, withQuery, type QueryInput } from '$lib/router/match';
 export const paths = {
   dashboard: () => '/',
   login: (next?: string) => withQuery('/login', { next }),
+  forgotPassword: (query?: QueryInput) => withQuery('/forgot-password', query),
 
   projects: (query?: QueryInput) => withQuery('/projects', query),
   project: (projectId: string) => buildPath('/projects/:projectId', { projectId }),
   projectSettings: (projectId: string) => buildPath('/projects/:projectId/settings', { projectId }),
   projectEnvironments: (projectId: string) =>
     buildPath('/projects/:projectId/environments', { projectId }),
+  projectBranches: (projectId: string, query?: QueryInput) =>
+    withQuery(buildPath('/projects/:projectId/branches', { projectId }), query),
+  branch: (branchId: string) => buildPath('/branches/:branchId', { branchId }),
   projectCompare: (projectId: string, query?: QueryInput) =>
     withQuery(buildPath('/projects/:projectId/compare', { projectId }), query),
 

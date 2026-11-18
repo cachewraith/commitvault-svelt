@@ -1,7 +1,8 @@
 <!--
   Deployment history: every recorded deployment as a timeline grouped by day,
   newest first. Filters live in the query string, so views such as "failed
-  records in production" or "records of this commit" are linkable.
+  records in production" or "records of this commit" are linkable. A record
+  opens in a side panel (`?view=<id>`) over the list.
 -->
 <script lang="ts">
   import { createQuery, keepPreviousData } from '@tanstack/svelte-query';
@@ -12,17 +13,19 @@
   import { queryKeys } from '$lib/api';
   import {
     DateRangeFilter,
+    DetailPanel,
     EmptyState,
     ErrorState,
     FilterBar,
     ListSkeleton,
+    MoreFilters,
     PageHeader,
     Pagination,
     STATUS_PRESENTATION,
     SearchInput,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import { queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import { detailPanel, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
   import { DEPLOYMENT_STATUSES } from '$lib/types';
   import { commitsApi } from '$features/commits/api';
   import FilterSelect from '$features/commits/components/FilterSelect.svelte';
@@ -31,6 +34,7 @@
   import TagSelect from '$features/tags/components/TagSelect.svelte';
   import { paths } from '$routes/paths';
   import { deploymentsApi, type DeploymentListParams } from '../api';
+  import DeploymentDetail from '../components/DeploymentDetail.svelte';
   import DeploymentFormDialog from '../components/DeploymentFormDialog.svelte';
   import DeploymentTimeline from '../components/DeploymentTimeline.svelte';
 
@@ -103,6 +107,9 @@
     });
   }
 
+  const moreActive = $derived([dateFrom.value || dateTo.value, tagId.value].filter((value) => value !== '').length);
+
+  const panel = detailPanel();
   let createOpen = $state(false);
 </script>
 
@@ -159,18 +166,20 @@
       allLabel="Any status"
       class="sm:w-40"
     />
-    <DateRangeFilter
-      from={dateFrom.value}
-      to={dateTo.value}
-      onchange={({ from, to }) => setQuery({ date_from: from, date_to: to, page: null })}
-      label="Deployed"
-    />
-    <TagSelect
-      value={tagId.value || null}
-      onchange={(next) => setQuery({ tag_id: next, page: null })}
-      placeholder="Any tag"
-      class="w-full sm:w-44"
-    />
+    <MoreFilters activeCount={moreActive}>
+      <DateRangeFilter
+        from={dateFrom.value}
+        to={dateTo.value}
+        onchange={({ from, to }) => setQuery({ date_from: from, date_to: to, page: null })}
+        label="Deployed"
+      />
+      <TagSelect
+        value={tagId.value || null}
+        onchange={(next) => setQuery({ tag_id: next, page: null })}
+        placeholder="Any tag"
+        class="w-full"
+      />
+    </MoreFilters>
     {#if commitId.value !== ''}
       <span class="bg-muted text-foreground inline-flex h-8 max-w-full items-center gap-1.5 rounded-lg border pr-1 pl-2.5 text-sm">
         <span class="text-muted-foreground shrink-0">Commit</span>
@@ -226,6 +235,7 @@
       showCommit={commitId.value === ''}
       label="Deployment history"
       groupByDay
+      {panel}
     />
     <div class="mt-6 border-t pt-3">
       <Pagination meta={deployments.data.meta} onchange={(next) => (page.value = next)} label="records" />
@@ -239,3 +249,16 @@
   environmentId={projectId.value !== '' && environmentId.value !== '' ? environmentId.value : undefined}
   commitId={projectId.value !== '' && commitId.value !== '' ? commitId.value : undefined}
 />
+
+<DetailPanel
+  open={panel.id !== null}
+  onclose={panel.close}
+  label="Deployment record"
+  fullPageHref={panel.id ? paths.deployment(panel.id) : undefined}
+>
+  {#if panel.id}
+    {#key panel.id}
+      <DeploymentDetail deploymentId={panel.id} layout="panel" ondeleted={panel.close} />
+    {/key}
+  {/if}
+</DetailPanel>

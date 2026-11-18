@@ -13,10 +13,11 @@
   import AppShell from '$lib/layouts/AppShell.svelte';
   import AuthLayout from '$lib/layouts/AuthLayout.svelte';
   import Logo from '$lib/layouts/Logo.svelte';
-  import { navigate, router, Router, safeInternalPath, withQuery } from '$lib/router';
+  import { navigate, prefetchRoutes, router, Router, safeInternalPath, withQuery } from '$lib/router';
   import { session } from '$lib/stores/session.svelte';
   import { bootstrapSession, logout } from '$features/auth/session';
   import QuickCreateMenu from '$features/commits/components/QuickCreateMenu.svelte';
+  import { routes } from './routes';
 
   const route = $derived(router.route);
 
@@ -41,6 +42,15 @@
     if (route.access === 'public') return true;
     if (route.access === 'private') return session.status === 'authenticated';
     return session.status === 'unauthenticated';
+  });
+
+  // Once signed in, fetch the remaining screens' code in idle time so the
+  // first visit to each screen is not delayed by a chunk download.
+  let prefetched = false;
+  $effect(() => {
+    if (session.status !== 'authenticated' || prefetched) return;
+    prefetched = true;
+    prefetchRoutes(routes);
   });
 
   const useAppShell = $derived(

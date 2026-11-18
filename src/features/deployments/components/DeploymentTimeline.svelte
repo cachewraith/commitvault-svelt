@@ -17,6 +17,7 @@
     TimelineItem,
     statusPresentation,
   } from '$lib/components';
+  import { openInPanel, type DetailPanelState } from '$lib/router';
   import { formatDateTime } from '$lib/utils/format';
   import { commitSubject } from '$features/commits/format';
   import { paths } from '$routes/paths';
@@ -33,6 +34,8 @@
     label?: string;
     /** Split into sections with a heading per local calendar day. */
     groupByDay?: boolean;
+    /** Open records in this side panel instead of navigating (modifier clicks still navigate). */
+    panel?: DetailPanelState;
   }
 
   let {
@@ -42,6 +45,7 @@
     showCommit = true,
     label = 'Deployment records',
     groupByDay: grouped = false,
+    panel,
   }: Props = $props();
 
   const groups = $derived(grouped ? groupByDay(deployments) : []);
@@ -50,7 +54,14 @@
 {#snippet entry(deployment: Deployment)}
   <TimelineItem tone={statusPresentation(deployment.status).tone} icon={STATUS_ICONS[deployment.status]}>
     {#snippet title()}
-      <a href={paths.deployment(deployment.id)} class="hover:text-brand">{deployment.deployment_title}</a>
+      <a
+        href={paths.deployment(deployment.id)}
+        onclick={panel ? openInPanel(panel, deployment.id) : undefined}
+        class={panel?.id === deployment.id ? 'text-brand' : 'hover:text-brand'}
+        aria-current={panel?.id === deployment.id ? 'true' : undefined}
+      >
+        {deployment.deployment_title}
+      </a>
     {/snippet}
     {#snippet meta()}
       <StatusBadge status={deployment.status} variant="dot" />
