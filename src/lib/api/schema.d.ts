@@ -818,7 +818,7 @@ export interface components {
             updated_at: string;
         };
         /** @enum {string} */
-        BranchSort: "last_commit" | "name" | "created_at";
+        BranchSort: "last_commit" | "name" | "created_at" | "commits";
         ChangePasswordRequest: {
             current_password: string;
             new_password: string;
@@ -898,7 +898,7 @@ export interface components {
             updated_at: string;
         };
         /** @enum {string} */
-        CommitSort: "commit_date" | "created_at" | "branch_name";
+        CommitSort: "created_at" | "commit_date" | "branch_name" | "message";
         ComparedCommit: {
             commit: components["schemas"]["CommitBrief"];
             /** Format: int64 */
@@ -1414,7 +1414,7 @@ export interface components {
             updated_at: string;
         };
         /** @enum {string} */
-        DeploymentSort: "deployed_at" | "created_at";
+        DeploymentSort: "created_at" | "deployed_at" | "title" | "status";
         /** @enum {string} */
         DeploymentStatus: "successful" | "failed" | "rolled_back" | "pending";
         /** @description Side-by-side view of the deployment *records* of two environments. */
@@ -1470,6 +1470,8 @@ export interface components {
             /** Format: date-time */
             updated_at: string;
         };
+        /** @enum {string} */
+        EnvironmentSort: "created_at" | "name" | "project" | "last_deployed_at";
         ErrorBody: {
             /** @description Stable machine-readable code, e.g. `validation_failed`. */
             code: string;
@@ -1770,7 +1772,7 @@ export interface components {
             updated_at: string;
         };
         /** @enum {string} */
-        ProjectSort: "name" | "created_at" | "updated_at";
+        ProjectSort: "name" | "created_at" | "updated_at" | "last_deployed_at" | "commits";
         /** @description Record counts of a project. */
         ProjectStats: {
             /** Format: int64 */
@@ -1826,7 +1828,7 @@ export interface components {
             version: string;
         };
         /** @enum {string} */
-        ReleaseSort: "released_at" | "created_at" | "version";
+        ReleaseSort: "created_at" | "released_at" | "version" | "title";
         /** @enum {string} */
         ReleaseStatus: "draft" | "released" | "deprecated";
         ReorderEnvironmentsRequest: {
@@ -2825,6 +2827,9 @@ export interface operations {
                 project_id?: string;
                 /** @description Matches environment name and server label. */
                 search?: string;
+                sort?: components["schemas"]["EnvironmentSort"];
+                /** @description Defaults to `asc` for `name` and `project`, `desc` otherwise. */
+                order?: components["schemas"]["SortOrder"];
                 page?: number;
                 per_page?: number;
             };

@@ -28,7 +28,7 @@
   <ul aria-label={label} class="bg-card divide-y rounded-lg border">
     {#each commits as commit (commit.id)}
       {@const full = isFullCommit(commit) ? commit : null}
-      <li class="flex flex-col gap-1.5 px-3 py-2">
+      <li class="animate-enter flex flex-col gap-1.5 px-3 py-2">
         <div class="flex min-w-0 items-center gap-3">
           <HashChip
             hash={commit.commit_hash}

@@ -129,7 +129,7 @@ describe('DeploymentFormDialog', () => {
     });
     renderDialog({ projectId: undefined, deployment: existing });
 
-    expect(screen.getByRole('heading', { name: 'Edit deployment record' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: 'Edit deployment' })).toBeInTheDocument();
     expect(screen.getByLabelText(/^Title/)).toHaveValue('Deploy 9fceb02 to Production');
 
     await user.clear(screen.getByLabelText(/^Notes/));

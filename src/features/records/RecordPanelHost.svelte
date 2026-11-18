@@ -138,7 +138,9 @@
         <DetailSkeleton />
       {:then module}
         {@const Detail = module.default}
-        <Detail {...{ [kind.idProp]: current.id }} layout="panel" ondeleted={close} />
+        <div class="animate-enter">
+          <Detail {...{ [kind.idProp]: current.id }} layout="panel" ondeleted={close} />
+        </div>
       {:catch}
         <p class="text-muted-foreground text-sm">This view could not be loaded. Check your connection and try again.</p>
       {/await}

@@ -10,6 +10,7 @@
   import { validateForm } from '$lib/validators';
   import { paths } from '$routes/paths';
   import { projectsApi } from '../api';
+  import ProjectTabs from '../components/ProjectTabs.svelte';
   import DeleteProjectDialog from '../components/DeleteProjectDialog.svelte';
   import ProjectFields from '../components/ProjectFields.svelte';
   import { projectFormValues, type ProjectFormValues } from '../form';
@@ -123,6 +124,8 @@
         { label: 'Settings' },
       ]}
     />
+
+    <ProjectTabs {projectId} />
 
     <div class="flex max-w-3xl flex-col gap-6">
       <section aria-labelledby="project-details-heading" class="bg-card rounded-lg border">

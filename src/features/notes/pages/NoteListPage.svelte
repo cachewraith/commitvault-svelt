@@ -19,10 +19,11 @@
     SearchInput,
     TagBadge,
     toastError,
+    SortSelect,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
-  import { queryBoolean, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import { queryBoolean, queryNumber, queryString, setQuery, sortState, type SortOption } from '$lib/router';
   import { cn } from '$lib/utils';
   import { paths } from '$routes/paths';
   import ProjectSelect from '$features/projects/components/ProjectSelect.svelte';
@@ -30,12 +31,13 @@
   import { notesApi, type NoteListParams } from '../api';
   import type { Note, NoteSort } from '../types';
 
-  const SORTS = ['updated_at', 'created_at', 'title'] as const satisfies readonly NoteSort[];
-  const SORT_LABELS: Record<NoteSort, string> = {
-    updated_at: 'Recently updated',
-    created_at: 'Recently created',
-    title: 'Title A–Z',
-  };
+  const SORT_OPTIONS = [
+    { sort: 'created_at', order: 'desc', label: 'Newest first' },
+    { sort: 'created_at', order: 'asc', label: 'Oldest first' },
+    { sort: 'updated_at', order: 'desc', label: 'Recently edited' },
+    { sort: 'title', order: 'asc', label: 'Title A–Z' },
+    { sort: 'title', order: 'desc', label: 'Title Z–A' },
+  ] as const satisfies readonly SortOption<NoteSort>[];
 
   const page = queryNumber('page', 1);
   const search = queryString('search');
@@ -44,7 +46,7 @@
   const category = queryString('category');
   const pinnedOnly = queryBoolean('pinned');
   const tagId = queryString('tag_id');
-  const sort = queryEnum('sort', SORTS, 'updated_at');
+  const sorting = sortState(SORT_OPTIONS);
 
   const params = $derived<NoteListParams>({
     page: page.value,
@@ -55,7 +57,8 @@
     category: category.value || undefined,
     pinned: pinnedOnly.value || undefined,
     tag_id: tagId.value || undefined,
-    sort: sort.value,
+    sort: sorting.sort,
+    order: sorting.order,
   });
 
   const filtered = $derived(
@@ -122,9 +125,7 @@
 </script>
 
 <div class="page">
-  <PageHeader
-    title="Notes"
-  >
+  <PageHeader title="Notes" description="Runbooks, decisions and commands, kept next to the work.">
     {#snippet actions()}
       <Button href={newNoteHref}>
         <PlusIcon aria-hidden="true" />
@@ -194,18 +195,7 @@
       Pinned only
     </Button>
     {#snippet actions()}
-      <Select.Root
-        type="single"
-        value={sort.value}
-        onValueChange={(next) => setQuery({ sort: next === 'updated_at' ? null : next, page: null })}
-      >
-        <Select.Trigger class="w-full sm:w-44" aria-label="Sort notes">{SORT_LABELS[sort.value]}</Select.Trigger>
-        <Select.Content>
-          {#each SORTS as value (value)}
-            <Select.Item {value} label={SORT_LABELS[value]} />
-          {/each}
-        </Select.Content>
-      </Select.Root>
+      <SortSelect options={SORT_OPTIONS} state={sorting} label="Sort notes" />
     {/snippet}
   </FilterBar>
 
@@ -241,7 +231,12 @@
   {:else}
     <ul aria-label="Notes" class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {#each notes.data.data as note (note.id)}
-        <li class={cn('bg-card flex min-h-36 flex-col rounded-lg border p-4', note.is_pinned && 'border-brand/30')}>
+        <li
+          class={cn(
+            'animate-enter bg-card hover:border-foreground/20 flex min-h-36 flex-col rounded-lg border p-4 transition-colors',
+            note.is_pinned && 'border-brand/30',
+          )}
+        >
           <div class="flex items-start gap-2">
             <h2 class="min-w-0 flex-1 text-sm font-semibold">
               <a href={paths.note(note.id)} class="line-clamp-2 hover:underline">{note.title}</a>

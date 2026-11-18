@@ -26,12 +26,14 @@
     TableSkeleton,
     toast,
     toastError,
+    SortSelect,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import { queryEnum, queryNumber, queryString, setPageTitle, setQuery } from '$lib/router';
+  import {queryNumber, queryString, setPageTitle, setQuery, type SortOption, sortState} from '$lib/router';
   import { formatNumber } from '$lib/utils';
   import { paths } from '$routes/paths';
   import { projectsApi } from '$features/projects/api';
+  import ProjectTabs from '$features/projects/components/ProjectTabs.svelte';
   import { branchesApi, type BranchListParams } from '../api';
   import BranchFormDialog from '../components/BranchFormDialog.svelte';
   import { confirmBranchDeletion } from '../delete';
@@ -40,20 +42,26 @@
 
   let { projectId }: { projectId: string } = $props();
 
-  const SORTS = ['last_commit', 'name', 'created_at'] as const satisfies readonly BranchSort[];
   const queryClient = useQueryClient();
 
   const page = queryNumber('page', 1);
   const search = queryString('search');
-  const sort = queryEnum('sort', SORTS, 'last_commit');
-  const order = queryEnum('order', ['asc', 'desc']);
+  const SORT_OPTIONS = [
+    { sort: 'created_at', order: 'desc', label: 'Newest first' },
+    { sort: 'created_at', order: 'asc', label: 'Oldest first' },
+    { sort: 'last_commit', order: 'desc', label: 'Latest commit' },
+    { sort: 'name', order: 'asc', label: 'Name A–Z' },
+    { sort: 'name', order: 'desc', label: 'Name Z–A' },
+    { sort: 'commits', order: 'desc', label: 'Most commits' },
+  ] as const satisfies readonly SortOption<BranchSort>[];
+  const sorting = sortState(SORT_OPTIONS);
 
   const params = $derived<BranchListParams>({
     page: page.value,
     per_page: 25,
     search: search.value || undefined,
-    sort: sort.value,
-    order: order.value,
+    sort: sorting.sort,
+    order: sorting.order,
   });
 
   const project = createQuery(() => ({
@@ -106,11 +114,9 @@
   }
 
   function onsort(nextSort: string, nextOrder: SortOrder) {
-    setQuery({ sort: nextSort === 'last_commit' ? null : nextSort, order: nextOrder, page: null });
+    sorting.set(nextSort, nextOrder);
   }
 
-  // Name sorts ascending by default, the date columns descending.
-  const effectiveOrder = $derived(order.value ?? (sort.value === 'name' ? 'asc' : 'desc'));
 </script>
 
 <div class="page">
@@ -139,6 +145,8 @@
       {/snippet}
     </PageHeader>
 
+    <ProjectTabs {projectId} />
+
     <FilterBar active={search.value !== ''} onreset={() => setQuery({ search: null, page: null })} label="Branch filters">
       <SearchInput
         value={search.value}
@@ -147,7 +155,10 @@
         placeholder="Search branch names…"
         class="w-full sm:w-72"
       />
-    </FilterBar>
+    {#snippet actions()}
+      <SortSelect options={SORT_OPTIONS} state={sorting} label="Sort branches" />
+    {/snippet}
+  </FilterBar>
 
     {#if project.isPending || branches.isPending}
       <TableSkeleton rows={6} columns={4} />
@@ -178,11 +189,11 @@
       <DataTable label="Branches">
         <DataTableHeader>
           <DataTableRow>
-            <DataTableHead sortKey="name" sort={sort.value} order={effectiveOrder} {onsort} defaultOrder="asc">
+            <DataTableHead sortKey="name" sort={sorting.sort} order={sorting.order} {onsort} defaultOrder="asc">
               Branch
             </DataTableHead>
             <DataTableHead align="right">Commits</DataTableHead>
-            <DataTableHead sortKey="last_commit" sort={sort.value} order={effectiveOrder} {onsort} defaultOrder="desc">
+            <DataTableHead sortKey="last_commit" sort={sorting.sort} order={sorting.order} {onsort} defaultOrder="desc">
               Latest commit
             </DataTableHead>
             <DataTableHead><span class="sr-only">Actions</span></DataTableHead>

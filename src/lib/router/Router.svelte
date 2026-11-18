@@ -67,7 +67,10 @@
 
 {#if Page}
   {#key router.pathname}
-    <Page {...router.params} />
+    <!-- Each page fades in; query-string changes do not replay it. -->
+    <div class="animate-enter">
+      <Page {...router.params} />
+    </div>
   {/key}
 {:else if failure && failure.route === router.route}
   {@render failed?.({ error: failure.error, retry })}

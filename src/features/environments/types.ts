@@ -9,3 +9,4 @@ export type EnvironmentRef = Schemas['EnvironmentRef'];
 export type DeploymentBrief = Schemas['DeploymentBrief'];
 export type CreateEnvironmentInput = Schemas['CreateEnvironmentRequest'];
 export type UpdateEnvironmentInput = Schemas['UpdateEnvironmentRequest'];
+export type EnvironmentSort = Schemas['EnvironmentSort'];

@@ -37,7 +37,7 @@
   };
 </script>
 
-<li class={cn('group/timeline relative flex gap-3 pb-6 last:pb-0', className)}>
+<li class={cn('animate-enter group/timeline relative flex gap-3 pb-6 last:pb-0', className)}>
   <!-- connector line -->
   <span
     class="bg-border absolute top-6 bottom-0 left-3 w-px -translate-x-1/2 group-last/timeline:hidden"

@@ -35,6 +35,7 @@
   import { environmentsApi } from '$features/environments/api';
   import EnvironmentSelect from '$features/environments/components/EnvironmentSelect.svelte';
   import { projectsApi } from '$features/projects/api';
+  import ProjectTabs from '$features/projects/components/ProjectTabs.svelte';
   import { paths } from '$routes/paths';
   import { deploymentsApi } from '../api';
   import type { ComparisonSide } from '../types';
@@ -137,7 +138,7 @@
 <div class="page">
   <PageHeader
     title="Compare environments"
-    description="See which commits have a deployment record in one environment, the other, or both."
+    description="Which commits were deployed to one environment, the other, or both."
     breadcrumbs={[
       { label: 'Projects', href: paths.projects() },
       { label: project.data?.name ?? 'Project', href: paths.project(projectId) },
@@ -145,9 +146,11 @@
     ]}
   >
     {#snippet actions()}
-      <Button variant="outline" href={paths.deployments({ project_id: projectId })}>Deployment history</Button>
+      <Button variant="outline" href={paths.deployments({ project_id: projectId })}>View deployments</Button>
     {/snippet}
   </PageHeader>
+
+  <ProjectTabs {projectId} />
 
   {#if environments.isPending}
     <DetailSkeleton header={false} />
@@ -240,12 +243,12 @@
       <div
         role="note"
         aria-label="How to read this comparison"
-        class="border-info/25 bg-info/10 text-foreground mb-6 flex items-start gap-2.5 rounded-lg border p-3 text-sm"
+        class="text-muted-foreground mb-6 flex items-start gap-2 text-xs"
       >
-        <InfoIcon class="text-info mt-0.5 size-4 shrink-0" aria-hidden="true" />
-        <div class="flex flex-col gap-1">
+        <InfoIcon class="mt-px size-3.5 shrink-0" aria-hidden="true" />
+        <div class="flex flex-col gap-0.5">
           <p>{result.notice}</p>
-          <p class="text-muted-foreground text-xs">
+          <p>
             Counting records with status:
             {result.statuses_considered.map((status) => STATUS_PRESENTATION[status].label).join(', ')}.
           </p>

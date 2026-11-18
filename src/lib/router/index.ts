@@ -16,6 +16,8 @@ export {
   setPanelHostMounted,
 } from './panel.svelte';
 export type { PanelTarget } from './panel.svelte';
+export { sortState } from './sort.svelte';
+export type { SortDirection, SortOption, SortState } from './sort.svelte';
 export { queryString, queryNumber, queryBoolean, queryEnum } from './query.svelte';
 export type { QueryBinding } from './query.svelte';
 export { buildPath, withQuery, safeInternalPath } from './match';

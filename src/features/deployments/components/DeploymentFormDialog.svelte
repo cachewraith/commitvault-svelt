@@ -191,11 +191,11 @@
 <Dialog.Root bind:open>
   <Dialog.Content class="max-h-[calc(100dvh-2rem)] overflow-y-auto sm:max-w-xl">
     <Dialog.Header>
-      <Dialog.Title>{isEdit ? 'Edit deployment record' : 'Record deployment'}</Dialog.Title>
+      <Dialog.Title>{isEdit ? 'Edit deployment' : 'Record deployment'}</Dialog.Title>
       <Dialog.Description>
         {isEdit
-          ? 'Correct the details of this deployment record.'
-          : 'Note that a commit was deployed to an environment. Nothing is deployed or verified by CommitVault.'}
+          ? 'Correct the details of this deployment.'
+          : 'Which commit went to which environment, and when. CommitVault only keeps the record.'}
       </Dialog.Description>
     </Dialog.Header>
 
@@ -212,6 +212,33 @@
         <FormField label="Project" error={errors.project_id} required>
           {#snippet children(field)}
             <ProjectSelect {...field} value={values.project_id || null} onchange={changeProject} placeholder="Select a project…" />
+          {/snippet}
+        </FormField>
+      {/if}
+
+      {#if commitLocked}
+        <div class="flex flex-col gap-1.5">
+          {@render locked('Commit')}
+          <p class="bg-muted/50 flex h-8 min-w-0 items-center gap-2 rounded-lg border px-2.5 text-sm">
+            {#if chosenCommit}
+              <code class="text-foreground shrink-0 font-mono text-xs">{chosenCommit.short_hash}</code>
+              <span class="text-muted-foreground truncate">{commitSubject(chosenCommit.commit_message)}</span>
+            {:else}
+              <span class="text-muted-foreground">Loading…</span>
+            {/if}
+          </p>
+          {@render lockedError(errors.commit_id)}
+        </div>
+      {:else}
+        <FormField label="Commit" error={errors.commit_id} required>
+          {#snippet children(field)}
+            <CommitPicker
+              {...field}
+              projectId={values.project_id || null}
+              value={values.commit_id || null}
+              selected={chosenCommit ?? null}
+              onchange={(next) => (values.commit_id = next ?? '')}
+            />
           {/snippet}
         </FormField>
       {/if}
@@ -270,32 +297,6 @@
         </FormField>
       </div>
 
-      {#if commitLocked}
-        <div class="flex flex-col gap-1.5">
-          {@render locked('Commit')}
-          <p class="bg-muted/50 flex h-8 min-w-0 items-center gap-2 rounded-lg border px-2.5 text-sm">
-            {#if chosenCommit}
-              <code class="text-foreground shrink-0 font-mono text-xs">{chosenCommit.short_hash}</code>
-              <span class="text-muted-foreground truncate">{commitSubject(chosenCommit.commit_message)}</span>
-            {:else}
-              <span class="text-muted-foreground">Loading…</span>
-            {/if}
-          </p>
-          {@render lockedError(errors.commit_id)}
-        </div>
-      {:else}
-        <FormField label="Commit" error={errors.commit_id} required>
-          {#snippet children(field)}
-            <CommitPicker
-              {...field}
-              projectId={values.project_id || null}
-              value={values.commit_id || null}
-              selected={chosenCommit ?? null}
-              onchange={(next) => (values.commit_id = next ?? '')}
-            />
-          {/snippet}
-        </FormField>
-      {/if}
 
       <FormField label="Title" error={errors.deployment_title} required>
         {#snippet children(field)}

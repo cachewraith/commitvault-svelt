@@ -40,7 +40,8 @@
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_noninteractive_element_interactions -->
 <tr
   class={cn(
-    'hover:bg-muted/40 border-b transition-colors',
+    // New rows fade in (keyed rows are not re-created on refetch, so this only plays for new data).
+    'animate-enter hover:bg-muted/40 border-b transition-colors',
     (href || onopen) && 'cursor-pointer',
     active && 'bg-muted/60',
     className,

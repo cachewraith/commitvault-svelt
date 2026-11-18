@@ -217,7 +217,7 @@
 
         <section aria-labelledby="commit-deployments-heading">
           <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 id="commit-deployments-heading" class="text-sm font-semibold">Recorded deployments</h2>
+            <h2 id="commit-deployments-heading" class="text-sm font-semibold">Deployments</h2>
             {#if data.deployment_count > 0}
               <a href={paths.deployments({ commit_id: data.id })} class="text-brand text-sm hover:underline">
                 Open in deployment history
@@ -250,7 +250,7 @@
                   </div>
                   <p class="text-muted-foreground text-xs">
                     Latest record <DateTime value={environment.latest_deployed_at} mode="both" />
-                    · {pluralize(environment.deployment_count, 'record')}
+                    · {pluralize(environment.deployment_count, 'deployment')}
                   </p>
                 </li>
               {/each}

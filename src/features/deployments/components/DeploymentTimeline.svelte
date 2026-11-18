@@ -112,7 +112,7 @@
             <span>{group.label}</span>
             <span class="text-muted-foreground tabular font-normal normal-case">
               {group.items.length}
-              {group.items.length === 1 ? 'record' : 'records'}
+              {group.items.length === 1 ? 'deployment' : 'deployments'}
             </span>
           </h2>
           <Timeline label="{label} — {group.label}">

@@ -450,6 +450,7 @@ Import shared components from the barrel `$lib/components`; shadcn primitives fr
 | `SearchInput` | →`onsearch(value)`, `value`, `label`, `placeholder`, `delay=300`, `disabled`, `ref` (bindable) | Debounced; Enter commits now; Esc/× clears; follows external `value`. |
 | `FormField` | →`label`, →`children(field)` snippet, `error`, `hint`, `required`, `optional`, `hideLabel`, `labelAside` | Spread `field` on the control. |
 | `FilterBar` | →`children`, `actions` snippet, `active`, `onreset`, `label` | "Clear filters" appears when `active`. |
+| `SortSelect` | →`options: SortOption[]`, →`state` (from `sortState(options)`), `label` | The sort menu of every list, in the FilterBar's `actions`. The first option is the default — **newest created first** on every list; `sortState` keeps `?sort=&order=` in the URL. |
 | `MoreFilters` | →`children`, `activeCount`, `label` | Popover for secondary filters inside a `FilterBar`; the button shows how many are set. Keep search, project and one or two key filters outside. |
 | `DetailPanel` | →`open`, →`onclose`, →`label`, `fullPageHref`, →`children` | Sheet sliding in from the right (full width on small screens), with "Open full page". Used by the app-wide `RecordPanelHost`; you rarely need it directly. |
 | `DateRangeFilter` | →`onchange({from, to})`, `from`, `to`, `label`, `disabled` | Emits ISO start/end of the local day (`date_from`/`date_to`). |
@@ -538,8 +539,17 @@ Rules:
   No gradients. Radius: `rounded-md` (small chips/buttons), `rounded-lg` (inputs, cards).
 - **Colour** is never the only signal: statuses always carry a label; use `StatusBadge`.
 - **Numbers that line up** (stats, counts, dates in tables) get `class="tabular"`.
-- **Motion**: only short state transitions (`transition-colors`, popover/dialog enter). No decorative
-  animation. `prefers-reduced-motion` is honoured globally.
+- **Motion**: purposeful and quick — things arrive, they don't perform. Use the tokens in `app.css`:
+  `.animate-enter` (220 ms fade + 4 px rise, `--ease-out-soft`) for pages, panel content and *new* list
+  items (`DataTableRow`, `TimelineItem`, list `li`s already have it); dialogs/popovers 200 ms; the side
+  panel slides the full width with `--ease-drawer` (300 ms in, 200 ms out); buttons scale to 0.97 on
+  press. No looping, bouncing, staggered or decorative animation, no count-ups.
+  `prefers-reduced-motion` turns all of it off globally.
+- **Wording**: one name per thing. Lists, stats and counts say "deployments" (not "deployment
+  records"); keep "recorded"/"no record" only where the difference matters (comparison, empty states).
+  Every main list has a one-sentence subtitle saying what it is for — plain, no disclaimers.
+- **Project screens** (overview, branches, environments, compare, settings) show `ProjectTabs` right
+  under the `PageHeader`.
 - **Accessibility**: real `<a>`/`<button>` elements; every icon-only button has `aria-label`;
   decorative icons `aria-hidden="true"`; inputs have labels (use `FormField` or `sr-only` labels);
   focus rings come from the global `:focus-visible` rule — do not remove outlines. Dialogs/menus/

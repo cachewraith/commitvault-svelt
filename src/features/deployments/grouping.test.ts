@@ -48,4 +48,15 @@ describe('groupByDay', () => {
     const groups = groupByDay([{ deployed_at: early }, { deployed_at: late }], now);
     expect(groups.map((group) => group.day)).toEqual(['2026-03-10', '2026-03-09']);
   });
+
+  it('never repeats a day when the input is not in date order', () => {
+    const now = new Date(2026, 10, 18, 12);
+    const at = (day: number, hour: number) => ({ deployed_at: new Date(2026, 10, day, hour).toISOString() });
+    const groups = groupByDay([at(17, 9), at(16, 9), at(17, 15)], now);
+    expect(groups.map((group) => [group.label, group.items.length])).toEqual([
+      ['Yesterday', 2],
+      [groups[1]!.label, 1],
+    ]);
+    expect(new Set(groups.map((group) => group.day)).size).toBe(groups.length);
+  });
 });

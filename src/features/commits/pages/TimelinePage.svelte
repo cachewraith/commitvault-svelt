@@ -85,7 +85,7 @@
 </script>
 
 <div class="page">
-  <PageHeader {title}>
+  <PageHeader {title} description="Commits in this period, grouped by branch.">
     {#snippet meta()}
       {#if commits.data}
         <p class="text-muted-foreground text-sm tabular">

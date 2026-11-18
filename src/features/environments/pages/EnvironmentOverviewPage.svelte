@@ -21,24 +21,37 @@
     Pagination,
     SearchInput,
     TableSkeleton,
+    SortSelect,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import { queryNumber, queryString, setQuery } from '$lib/router';
+  import { queryNumber, queryString, setQuery, sortState, type SortOption } from '$lib/router';
   import { formatNumber } from '$lib/utils';
   import { paths } from '$routes/paths';
   import ProjectSelect from '$features/projects/components/ProjectSelect.svelte';
   import { environmentsApi, type EnvironmentListParams } from '../api';
+  import type { EnvironmentSort } from '../types';
   import LatestDeployment from '../components/LatestDeployment.svelte';
 
   const page = queryNumber('page', 1);
   const search = queryString('search');
   const projectId = queryString('project_id');
 
+  const SORT_OPTIONS = [
+    { sort: 'created_at', order: 'desc', label: 'Newest first' },
+    { sort: 'created_at', order: 'asc', label: 'Oldest first' },
+    { sort: 'name', order: 'asc', label: 'Name A–Z' },
+    { sort: 'project', order: 'asc', label: 'Project A–Z' },
+    { sort: 'last_deployed_at', order: 'desc', label: 'Latest deployment' },
+  ] as const satisfies readonly SortOption<EnvironmentSort>[];
+  const sorting = sortState(SORT_OPTIONS);
+
   const params = $derived<EnvironmentListParams>({
     page: page.value,
     per_page: 25,
     search: search.value || undefined,
     project_id: projectId.value || undefined,
+    sort: sorting.sort,
+    order: sorting.order,
   });
 
   const environments = createQuery(() => ({
@@ -51,9 +64,7 @@
 </script>
 
 <div class="page">
-  <PageHeader
-    title="Environments"
-  />
+  <PageHeader title="Environments" description="Where each project runs, and what was deployed there last." />
 
   <FilterBar active={filtered} onreset={() => setQuery({ search: null, project_id: null, page: null })} label="Environment filters">
     <SearchInput
@@ -72,6 +83,9 @@
       includeArchived
       class="w-full sm:w-56"
     />
+    {#snippet actions()}
+      <SortSelect options={SORT_OPTIONS} state={sorting} label="Sort environments" />
+    {/snippet}
   </FilterBar>
 
   {#if environments.isPending}

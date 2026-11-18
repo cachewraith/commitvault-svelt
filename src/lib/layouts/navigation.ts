@@ -19,18 +19,45 @@ export interface NavItem {
   exact?: boolean;
 }
 
-/** Primary navigation, in sidebar order. */
-export const PRIMARY_NAV: NavItem[] = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboardIcon, exact: true },
-  { label: 'Projects', href: '/projects', icon: FolderGitIcon },
-  { label: 'Commits', href: '/commits', icon: GitCommitIcon },
-  { label: 'Timeline', href: '/timeline', icon: CalendarRangeIcon },
-  { label: 'Deployments', href: '/deployments', icon: RocketIcon },
-  { label: 'Environments', href: '/environments', icon: ServerIcon },
-  { label: 'Releases', href: '/releases', icon: PackageIcon },
-  { label: 'Notes', href: '/notes', icon: NotebookIcon },
-  { label: 'Tags', href: '/tags', icon: TagsIcon },
+export interface NavSection {
+  /** Small heading above the group; omitted for the first group. */
+  label?: string;
+  items: NavItem[];
+}
+
+/**
+ * Primary navigation, grouped the way the app is organised: the workspace
+ * (overview and projects), what happened (activity), and the building blocks
+ * you set up once (setup).
+ */
+export const NAV_SECTIONS: NavSection[] = [
+  {
+    items: [
+      { label: 'Dashboard', href: '/', icon: LayoutDashboardIcon, exact: true },
+      { label: 'Projects', href: '/projects', icon: FolderGitIcon },
+      { label: 'Timeline', href: '/timeline', icon: CalendarRangeIcon },
+    ],
+  },
+  {
+    label: 'Activity',
+    items: [
+      { label: 'Commits', href: '/commits', icon: GitCommitIcon },
+      { label: 'Deployments', href: '/deployments', icon: RocketIcon },
+      { label: 'Releases', href: '/releases', icon: PackageIcon },
+      { label: 'Notes', href: '/notes', icon: NotebookIcon },
+    ],
+  },
+  {
+    label: 'Setup',
+    items: [
+      { label: 'Environments', href: '/environments', icon: ServerIcon },
+      { label: 'Tags', href: '/tags', icon: TagsIcon },
+    ],
+  },
 ];
+
+/** Every primary item, in sidebar order. */
+export const PRIMARY_NAV: NavItem[] = NAV_SECTIONS.flatMap((section) => section.items);
 
 /** Pinned to the bottom of the sidebar. */
 export const SECONDARY_NAV: NavItem[] = [{ label: 'Settings', href: '/settings', icon: SettingsIcon }];

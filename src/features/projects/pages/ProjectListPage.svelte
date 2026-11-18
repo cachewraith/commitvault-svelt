@@ -32,10 +32,11 @@
     TagBadge,
     toast,
     toastError,
+    SortSelect,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
   import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-  import { navigate, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import {navigate, queryEnum, queryNumber, queryString, setQuery, type SortOption, sortState} from '$lib/router';
   import { formatNumber, safeExternalUrl } from '$lib/utils';
   import { paths } from '$routes/paths';
   import TagSelect from '$features/tags/components/TagSelect.svelte';
@@ -50,7 +51,6 @@
     { value: 'archived', label: 'Archived' },
     { value: 'all', label: 'All' },
   ] as const;
-  const SORTS = ['name', 'created_at', 'updated_at'] as const satisfies readonly ProjectSort[];
 
   const queryClient = useQueryClient();
 
@@ -58,8 +58,16 @@
   const search = queryString('search');
   const status = queryEnum('status', ['active', 'archived', 'all'], 'active');
   const tagId = queryString('tag_id');
-  const sort = queryEnum('sort', SORTS, 'updated_at');
-  const order = queryEnum('order', ['asc', 'desc']);
+  const SORT_OPTIONS = [
+    { sort: 'created_at', order: 'desc', label: 'Newest first' },
+    { sort: 'created_at', order: 'asc', label: 'Oldest first' },
+    { sort: 'updated_at', order: 'desc', label: 'Recently updated' },
+    { sort: 'name', order: 'asc', label: 'Name A–Z' },
+    { sort: 'name', order: 'desc', label: 'Name Z–A' },
+    { sort: 'last_deployed_at', order: 'desc', label: 'Latest deployment' },
+    { sort: 'commits', order: 'desc', label: 'Most commits' },
+  ] as const satisfies readonly SortOption<ProjectSort>[];
+  const sorting = sortState(SORT_OPTIONS);
 
   const params = $derived<ProjectListParams>({
     page: page.value,
@@ -67,8 +75,8 @@
     search: search.value || undefined,
     status: status.value === 'all' ? undefined : status.value,
     tag_id: tagId.value || undefined,
-    sort: sort.value,
-    order: order.value,
+    sort: sorting.sort,
+    order: sorting.order,
   });
 
   const projects = createQuery(() => ({
@@ -79,7 +87,6 @@
 
   const filtered = $derived(search.value !== '' || status.value !== 'active' || tagId.value !== '');
   /** Sort direction in effect (the server picks A→Z for names, newest first otherwise). */
-  const effectiveOrder = $derived<SortOrder>(order.value ?? (sort.value === 'name' ? 'asc' : 'desc'));
 
   let createOpen = $state(false);
   let editOpen = $state(false);
@@ -136,12 +143,12 @@
   }
 
   function onsort(nextSort: string, nextOrder: SortOrder) {
-    setQuery({ sort: nextSort === 'updated_at' ? null : nextSort, order: nextOrder, page: null });
+    sorting.set(nextSort, nextOrder);
   }
 </script>
 
 <div class="page">
-  <PageHeader title="Projects">
+  <PageHeader title="Projects" description="Each project has its own branches, environments and history.">
     {#snippet actions()}
       <Button onclick={() => (createOpen = true)}>
         <PlusIcon aria-hidden="true" />
@@ -169,6 +176,9 @@
       onchange={(next) => setQuery({ status: next === 'active' ? null : next, page: null })}
     />
     <TagSelect value={tagId.value || null} onchange={(id) => setQuery({ tag_id: id, page: null })} />
+    {#snippet actions()}
+      <SortSelect options={SORT_OPTIONS} state={sorting} label="Sort projects" />
+    {/snippet}
   </FilterBar>
 
   {#if projects.isPending}
@@ -208,15 +218,15 @@
     <DataTable label="Projects">
       <DataTableHeader>
         <DataTableRow>
-          <DataTableHead sortKey="name" sort={sort.value} order={effectiveOrder} {onsort} defaultOrder="asc">
+          <DataTableHead sortKey="name" sort={sorting.sort} order={sorting.order} {onsort} defaultOrder="asc">
             Project
           </DataTableHead>
           <DataTableHead>Default branch</DataTableHead>
           <DataTableHead align="right">Commits</DataTableHead>
           <DataTableHead align="right">Environments</DataTableHead>
-          <DataTableHead align="right">Deployment records</DataTableHead>
-          <DataTableHead>Last recorded deployment</DataTableHead>
-          <DataTableHead sortKey="updated_at" sort={sort.value} order={effectiveOrder} {onsort}>
+          <DataTableHead align="right">Deployments</DataTableHead>
+          <DataTableHead>Last deployment</DataTableHead>
+          <DataTableHead sortKey="updated_at" sort={sorting.sort} order={sorting.order} {onsort}>
             Updated
           </DataTableHead>
           <DataTableHead align="right"><span class="sr-only">Actions</span></DataTableHead>

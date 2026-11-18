@@ -25,9 +25,10 @@
     TagBadge,
     toast,
     toastError,
+    SortSelect,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import { queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import {queryNumber, queryString, setQuery, type SortOption, sortState} from '$lib/router';
   import { formatNumber, pluralize } from '$lib/utils';
   import { paths } from '$routes/paths';
   import { tagsApi, type TagListParams } from '../api';
@@ -35,21 +36,26 @@
   import { invalidateTaggedResources } from '../queries';
   import type { Tag, TagSort } from '../types';
 
-  const SORTS = ['name', 'created_at', 'usage'] as const satisfies readonly TagSort[];
 
   const queryClient = useQueryClient();
 
   const page = queryNumber('page', 1);
   const search = queryString('search');
-  const sort = queryEnum('sort', SORTS, 'name');
-  const order = queryEnum('order', ['asc', 'desc']);
+  const SORT_OPTIONS = [
+    { sort: 'created_at', order: 'desc', label: 'Newest first' },
+    { sort: 'created_at', order: 'asc', label: 'Oldest first' },
+    { sort: 'name', order: 'asc', label: 'Name A–Z' },
+    { sort: 'name', order: 'desc', label: 'Name Z–A' },
+    { sort: 'usage', order: 'desc', label: 'Most used' },
+  ] as const satisfies readonly SortOption<TagSort>[];
+  const sorting = sortState(SORT_OPTIONS);
 
   const params = $derived<TagListParams>({
     page: page.value,
     per_page: 50,
     search: search.value || undefined,
-    sort: sort.value,
-    order: order.value,
+    sort: sorting.sort,
+    order: sorting.order,
   });
 
   const tags = createQuery(() => ({
@@ -59,7 +65,6 @@
   }));
 
   /** Sort direction in effect (the server defaults to A→Z for names, highest first otherwise). */
-  const effectiveOrder = $derived<SortOrder>(order.value ?? (sort.value === 'name' ? 'asc' : 'desc'));
 
   let dialogOpen = $state(false);
   let editing = $state.raw<Tag | undefined>(undefined);
@@ -104,7 +109,7 @@
   }
 
   function onsort(nextSort: string, nextOrder: SortOrder) {
-    setQuery({ sort: nextSort === 'name' ? null : nextSort, order: nextOrder, page: null });
+    sorting.set(nextSort, nextOrder);
   }
 
   /** Usage columns: label, count accessor and the list that shows those records. */
@@ -118,9 +123,7 @@
 </script>
 
 <div class="page">
-  <PageHeader
-    title="Tags"
-  >
+  <PageHeader title="Tags" description="Labels you can add to projects, commits, deployments, releases and notes.">
     {#snippet actions()}
       <Button onclick={openCreate}>
         <PlusIcon aria-hidden="true" />
@@ -137,6 +140,9 @@
       placeholder="Search tags"
       class="w-full sm:w-72"
     />
+    {#snippet actions()}
+      <SortSelect options={SORT_OPTIONS} state={sorting} label="Sort tags" />
+    {/snippet}
   </FilterBar>
 
   {#if tags.isPending}
@@ -168,16 +174,16 @@
     <DataTable label="Tags">
       <DataTableHeader>
         <DataTableRow>
-          <DataTableHead sortKey="name" sort={sort.value} order={effectiveOrder} {onsort} defaultOrder="asc">
+          <DataTableHead sortKey="name" sort={sorting.sort} order={sorting.order} {onsort} defaultOrder="asc">
             Tag
           </DataTableHead>
           {#each USAGE_COLUMNS as column (column.label)}
             <DataTableHead align="right">{column.label}</DataTableHead>
           {/each}
-          <DataTableHead sortKey="usage" sort={sort.value} order={effectiveOrder} {onsort} align="right">
+          <DataTableHead sortKey="usage" sort={sorting.sort} order={sorting.order} {onsort} align="right">
             Total
           </DataTableHead>
-          <DataTableHead sortKey="created_at" sort={sort.value} order={effectiveOrder} {onsort}>
+          <DataTableHead sortKey="created_at" sort={sorting.sort} order={sorting.order} {onsort}>
             Created
           </DataTableHead>
           <DataTableHead align="right"><span class="sr-only">Actions</span></DataTableHead>

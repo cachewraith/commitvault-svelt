@@ -64,7 +64,7 @@ describe('CommitDetailPage', () => {
     const environments = screen.getByRole('list', { name: 'Environments with a deployment record' });
     expect(within(environments).getByText('Production')).toBeInTheDocument();
     expect(within(environments).getByText('Failed')).toBeInTheDocument();
-    expect(within(environments).getByText(/2 records/)).toBeInTheDocument();
+    expect(within(environments).getByText(/2 deployments/)).toBeInTheDocument();
 
     expect(await screen.findByRole('link', { name: 'Deploy 9fceb02 to Production' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: /1\.4\.0/ })).toHaveAttribute('href', '/releases/r1');

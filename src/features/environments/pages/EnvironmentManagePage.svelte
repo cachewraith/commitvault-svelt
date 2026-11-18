@@ -26,6 +26,7 @@
   import { pluralize } from '$lib/utils';
   import { paths } from '$routes/paths';
   import { projectsApi } from '$features/projects/api';
+  import ProjectTabs from '$features/projects/components/ProjectTabs.svelte';
   import { environmentsApi } from '../api';
   import EnvironmentFormDialog from '../components/EnvironmentFormDialog.svelte';
   import LatestDeployment from '../components/LatestDeployment.svelte';
@@ -200,7 +201,6 @@
       ]}
     >
       {#snippet actions()}
-        <Button variant="outline" href={paths.projectCompare(projectId)}>Compare environments</Button>
         <Button
           onclick={() => openCreate()}
           disabled={atLimit}
@@ -211,6 +211,8 @@
         </Button>
       {/snippet}
     </PageHeader>
+
+    <ProjectTabs {projectId} />
 
     <p class="sr-only" role="status" aria-live="polite">{announcement}</p>
 
@@ -283,7 +285,7 @@
                 href={paths.deployments({ project_id: projectId, environment_id: environment.id })}
                 class="text-muted-foreground hover:text-foreground tabular w-fit text-xs"
               >
-                {pluralize(environment.deployment_count, 'deployment record')}
+                {pluralize(environment.deployment_count, 'deployment')}
               </a>
             </div>
 

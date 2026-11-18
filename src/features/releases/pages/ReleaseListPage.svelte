@@ -26,10 +26,11 @@
     StatusBadge,
     TableSkeleton,
     TagBadge,
+    SortSelect,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
-  import { navigate, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import {navigate, queryEnum, queryNumber, queryString, setQuery, type SortOption, sortState} from '$lib/router';
   import { RELEASE_STATUSES } from '$lib/types';
   import { formatNumber } from '$lib/utils';
   import { paths } from '$routes/paths';
@@ -40,7 +41,6 @@
   import ReleaseFormDialog from '../components/ReleaseFormDialog.svelte';
   import type { ReleaseSort, ReleaseStatus } from '../types';
 
-  const SORTS = ['released_at', 'created_at', 'version'] as const satisfies readonly ReleaseSort[];
   const STATUS_LABELS: Record<ReleaseStatus, string> = {
     draft: 'Draft',
     released: 'Released',
@@ -53,8 +53,16 @@
   const tagId = queryString('tag_id');
   const commitId = queryString('commit_id');
   const status = queryEnum('status', RELEASE_STATUSES);
-  const sort = queryEnum('sort', SORTS, 'released_at');
-  const order = queryEnum('order', ['asc', 'desc'], 'desc');
+  const SORT_OPTIONS = [
+    { sort: 'created_at', order: 'desc', label: 'Newest first' },
+    { sort: 'created_at', order: 'asc', label: 'Oldest first' },
+    { sort: 'released_at', order: 'desc', label: 'Released, newest' },
+    { sort: 'released_at', order: 'asc', label: 'Released, oldest' },
+    { sort: 'version', order: 'asc', label: 'Version A–Z' },
+    { sort: 'version', order: 'desc', label: 'Version Z–A' },
+    { sort: 'title', order: 'asc', label: 'Title A–Z' },
+  ] as const satisfies readonly SortOption<ReleaseSort>[];
+  const sorting = sortState(SORT_OPTIONS);
 
   const params = $derived<ReleaseListParams>({
     page: page.value,
@@ -64,8 +72,8 @@
     tag_id: tagId.value || undefined,
     commit_id: commitId.value || undefined,
     status: status.value,
-    sort: sort.value,
-    order: order.value,
+    sort: sorting.sort,
+    order: sorting.order,
   });
 
   const filtered = $derived(
@@ -92,16 +100,12 @@
   }
 
   function onsort(nextSort: string, nextOrder: SortOrder) {
-    setQuery({
-      sort: nextSort === 'released_at' ? null : nextSort,
-      order: nextOrder === 'desc' ? null : nextOrder,
-      page: null,
-    });
+    sorting.set(nextSort, nextOrder);
   }
 </script>
 
 <div class="page">
-  <PageHeader title="Releases">
+  <PageHeader title="Releases" description="Versions you’ve shipped, and which commits went into each.">
     {#snippet actions()}
       <Button onclick={() => (creating = true)}>
         <PlusIcon aria-hidden="true" />
@@ -170,6 +174,9 @@
         </Button>
       </span>
     {/if}
+    {#snippet actions()}
+      <SortSelect options={SORT_OPTIONS} state={sorting} label="Sort releases" />
+    {/snippet}
   </FilterBar>
 
   {#if releases.isPending}
@@ -205,13 +212,13 @@
     <DataTable label="Releases">
       <DataTableHeader>
         <DataTableRow>
-          <DataTableHead sortKey="version" sort={sort.value} order={order.value} {onsort} defaultOrder="asc">
+          <DataTableHead sortKey="version" sort={sorting.sort} order={sorting.order} {onsort} defaultOrder="asc">
             Version
           </DataTableHead>
           <DataTableHead>Title</DataTableHead>
           <DataTableHead>Project</DataTableHead>
           <DataTableHead>Status</DataTableHead>
-          <DataTableHead sortKey="released_at" sort={sort.value} order={order.value} {onsort}>Released</DataTableHead>
+          <DataTableHead sortKey="released_at" sort={sorting.sort} order={sorting.order} {onsort}>Released</DataTableHead>
           <DataTableHead align="right">Commits</DataTableHead>
           <DataTableHead>Tags</DataTableHead>
         </DataTableRow>

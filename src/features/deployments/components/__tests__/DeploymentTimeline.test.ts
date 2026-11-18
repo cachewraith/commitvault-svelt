@@ -60,7 +60,7 @@ describe('DeploymentTimeline', () => {
     });
 
     const todayGroup = screen.getByRole('region', { name: 'Today' });
-    expect(within(todayGroup).getByRole('heading', { name: /Today/ })).toHaveTextContent('2 records');
+    expect(within(todayGroup).getByRole('heading', { name: /Today/ })).toHaveTextContent('2 deployments');
     expect(within(todayGroup).getAllByRole('listitem')).toHaveLength(2);
     expect(screen.getAllByRole('region')).toHaveLength(2);
   });

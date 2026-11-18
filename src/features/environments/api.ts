@@ -1,9 +1,11 @@
 import { api } from '$lib/api/client';
 import type { ListParams } from '$lib/api/types';
-import type { CreateEnvironmentInput, Environment, UpdateEnvironmentInput } from './types';
+import type { CreateEnvironmentInput, Environment, EnvironmentSort, UpdateEnvironmentInput } from './types';
 
-export interface EnvironmentListParams extends Pick<ListParams, 'page' | 'per_page' | 'search'> {
+export interface EnvironmentListParams extends ListParams {
   project_id?: string;
+  /** Default: newest first. */
+  sort?: EnvironmentSort;
 }
 
 export const environmentsApi = {

@@ -28,10 +28,11 @@
     SearchInput,
     TableSkeleton,
     TagBadge,
+    SortSelect,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
   import GitBranchIcon from '@lucide/svelte/icons/git-branch';
-  import { queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import {queryEnum, queryNumber, queryString, setQuery, type SortOption, sortState} from '$lib/router';
   import { branchesApi } from '$features/branches/api';
   import BranchSelect from '$features/branches/components/BranchSelect.svelte';
   import EnvironmentSelect from '$features/environments/components/EnvironmentSelect.svelte';
@@ -46,7 +47,6 @@
   import { DEPLOYMENT_FILTER_LABELS, commitSubject } from '../format';
   import { COMMIT_DEPLOYMENT_FILTERS, type CommitSort } from '../types';
 
-  const SORTS = ['commit_date', 'created_at', 'branch_name'] as const satisfies readonly CommitSort[];
   const PER_PAGE = 25;
 
   const page = queryNumber('page', 1);
@@ -59,8 +59,15 @@
   const environmentId = queryString('environment_id');
   const tagId = queryString('tag_id');
   const releaseId = queryString('release_id');
-  const sort = queryEnum('sort', SORTS, 'commit_date');
-  const order = queryEnum('order', ['asc', 'desc'], 'desc');
+  const SORT_OPTIONS = [
+    { sort: 'created_at', order: 'desc', label: 'Newest first' },
+    { sort: 'created_at', order: 'asc', label: 'Oldest first' },
+    { sort: 'commit_date', order: 'desc', label: 'Commit date, newest' },
+    { sort: 'commit_date', order: 'asc', label: 'Commit date, oldest' },
+    { sort: 'branch_name', order: 'asc', label: 'Branch A–Z' },
+    { sort: 'message', order: 'asc', label: 'Message A–Z' },
+  ] as const satisfies readonly SortOption<CommitSort>[];
+  const sorting = sortState(SORT_OPTIONS);
 
   const params = $derived<CommitListParams>({
     page: page.value,
@@ -74,8 +81,8 @@
     environment_id: environmentId.value || undefined,
     tag_id: tagId.value || undefined,
     release_id: releaseId.value || undefined,
-    sort: sort.value,
-    order: order.value,
+    sort: sorting.sort,
+    order: sorting.order,
   });
 
   const commits = createQuery(() => ({
@@ -133,11 +140,7 @@
   }
 
   function onsort(nextSort: string, nextOrder: SortOrder) {
-    setQuery({
-      sort: nextSort === 'commit_date' ? null : nextSort,
-      order: nextOrder === 'desc' ? null : nextOrder,
-      page: null,
-    });
+    sorting.set(nextSort, nextOrder);
   }
 
   /** Filters inside "More filters" that are set. */
@@ -149,7 +152,7 @@
 </script>
 
 <div class="page">
-  <PageHeader title="Commits">
+  <PageHeader title="Commits" description="Every commit you’ve recorded, across all projects.">
     {#snippet actions()}
       <Button onclick={() => (createOpen = true)}>
         <PlusIcon aria-hidden="true" />
@@ -235,6 +238,9 @@
         </button>
       </span>
     {/if}
+    {#snippet actions()}
+      <SortSelect options={SORT_OPTIONS} state={sorting} label="Sort commits" />
+    {/snippet}
   </FilterBar>
 
   {#if commits.isPending}
@@ -275,10 +281,10 @@
           {#if showProject}
             <DataTableHead>Project</DataTableHead>
           {/if}
-          <DataTableHead sortKey="commit_date" sort={sort.value} order={order.value} {onsort} defaultOrder="desc">
+          <DataTableHead sortKey="commit_date" sort={sorting.sort} order={sorting.order} {onsort} defaultOrder="desc">
             Date
           </DataTableHead>
-          <DataTableHead>Recorded in</DataTableHead>
+          <DataTableHead>Deployed to</DataTableHead>
         </DataTableRow>
       </DataTableHeader>
       <DataTableBody>

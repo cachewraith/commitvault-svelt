@@ -179,7 +179,7 @@
 
     <section class="mb-6 flex flex-col gap-3" aria-labelledby="branch-environments">
       <div>
-        <h2 id="branch-environments" class="text-sm font-semibold">Recorded deployments</h2>
+        <h2 id="branch-environments" class="text-sm font-semibold">Deployments</h2>
         <p class="text-muted-foreground text-xs">
           The latest deployment record of a commit on this branch, per environment. Environments without a record are
           not listed — that does not mean the branch was never deployed there.
@@ -205,7 +205,7 @@
               </div>
               <LatestDeployment deployment={environment.latest_deployment} showMessage class="min-w-0 flex-1" />
               <span class="text-muted-foreground tabular shrink-0 text-xs">
-                {pluralize(environment.deployment_count, 'record')}
+                {pluralize(environment.deployment_count, 'deployment')}
               </span>
             </li>
           {/each}

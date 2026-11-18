@@ -6,15 +6,11 @@
 -->
 <script lang="ts">
   import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
-  import EllipsisIcon from '@lucide/svelte/icons/ellipsis';
   import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
   import GitBranchIcon from '@lucide/svelte/icons/git-branch';
   import GitCommitIcon from '@lucide/svelte/icons/git-commit-horizontal';
-  import GitCompareIcon from '@lucide/svelte/icons/git-compare-arrows';
   import PlusIcon from '@lucide/svelte/icons/plus';
   import RocketIcon from '@lucide/svelte/icons/rocket';
-  import ServerIcon from '@lucide/svelte/icons/server';
-  import SettingsIcon from '@lucide/svelte/icons/settings';
   import { isApiError, queryKeys } from '$lib/api';
   import {
     BranchBadge,
@@ -31,8 +27,7 @@
     toastError,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-  import { navigate, setPageTitle } from '$lib/router';
+  import { setPageTitle } from '$lib/router';
   import { cn, formatNumber, pluralize, safeExternalUrl } from '$lib/utils';
   import { paths } from '$routes/paths';
   import { branchesApi } from '$features/branches/api';
@@ -48,6 +43,7 @@
   import ReleaseFormDialog from '$features/releases/components/ReleaseFormDialog.svelte';
   import ReleaseList from '$features/releases/components/ReleaseList.svelte';
   import { projectsApi } from '../api';
+  import ProjectTabs from './ProjectTabs.svelte';
   import Section from './Section.svelte';
   import { invalidateAllProjectData } from '../queries';
 
@@ -168,34 +164,6 @@
       <RocketIcon aria-hidden="true" />
       Record deployment
     </Button>
-    <DropdownMenu.Root>
-      <DropdownMenu.Trigger>
-        {#snippet child({ props })}
-          <Button {...props} variant="outline" size={compact ? 'icon-sm' : 'icon'} aria-label="More project actions">
-            <EllipsisIcon aria-hidden="true" />
-          </Button>
-        {/snippet}
-      </DropdownMenu.Trigger>
-      <DropdownMenu.Content align="end" class="w-56">
-        <DropdownMenu.Item onSelect={() => navigate(paths.projectCompare(projectId))}>
-          <GitCompareIcon aria-hidden="true" />
-          Compare environments
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onSelect={() => navigate(paths.projectBranches(projectId))}>
-          <GitBranchIcon aria-hidden="true" />
-          Branches
-        </DropdownMenu.Item>
-        <DropdownMenu.Item onSelect={() => navigate(paths.projectEnvironments(projectId))}>
-          <ServerIcon aria-hidden="true" />
-          Environments
-        </DropdownMenu.Item>
-        <DropdownMenu.Separator />
-        <DropdownMenu.Item onSelect={() => navigate(paths.projectSettings(projectId))}>
-          <SettingsIcon aria-hidden="true" />
-          Project settings
-        </DropdownMenu.Item>
-      </DropdownMenu.Content>
-    </DropdownMenu.Root>
     {/snippet}
 
     {#if isPage}
@@ -217,6 +185,8 @@
         <div class="flex flex-wrap gap-2">{@render actionButtons(true)}</div>
       </header>
     {/if}
+
+    <ProjectTabs {projectId} />
 
     {#if current.status === 'archived'}
       <div
@@ -241,7 +211,7 @@
       {#each [
         { label: 'Commits', value: stats.commit_count, href: paths.commits(scope) },
         { label: 'Environments', value: stats.environment_count, href: paths.projectEnvironments(projectId) },
-        { label: 'Deployment records', value: stats.deployment_count, href: paths.deployments(scope) },
+        { label: 'Deployments', value: stats.deployment_count, href: paths.deployments(scope) },
         { label: 'Releases', value: stats.release_count, href: paths.releases(scope) },
         { label: 'Notes', value: stats.note_count, href: paths.notes(scope) },
       ] as stat (stat.label)}
@@ -295,7 +265,7 @@
                   </div>
                   <LatestDeployment deployment={environment.latest_deployment} showMessage class="min-w-0 flex-1" />
                   <span class="text-muted-foreground tabular shrink-0 text-xs">
-                    {pluralize(environment.deployment_count, 'record')}
+                    {pluralize(environment.deployment_count, 'deployment')}
                   </span>
                 </li>
               {/each}

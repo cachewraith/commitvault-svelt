@@ -12,6 +12,7 @@ export { default as FormField } from './FormField.svelte';
 export type { FieldControlProps } from './FormField.svelte';
 export { default as FilterBar } from './FilterBar.svelte';
 export { default as MoreFilters } from './MoreFilters.svelte';
+export { default as SortSelect } from './SortSelect.svelte';
 export { default as DateRangeFilter } from './DateRangeFilter.svelte';
 export type { DateRange } from './DateRangeFilter.svelte';
 export { default as Combobox } from './Combobox.svelte';

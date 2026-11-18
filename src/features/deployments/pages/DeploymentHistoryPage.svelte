@@ -22,9 +22,10 @@
     Pagination,
     STATUS_PRESENTATION,
     SearchInput,
+    SortSelect,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import { queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import { queryEnum, queryNumber, queryString, setQuery, sortState, type SortOption } from '$lib/router';
   import { DEPLOYMENT_STATUSES } from '$lib/types';
   import { commitsApi } from '$features/commits/api';
   import FilterSelect from '$features/commits/components/FilterSelect.svelte';
@@ -33,6 +34,7 @@
   import TagSelect from '$features/tags/components/TagSelect.svelte';
   import { paths } from '$routes/paths';
   import { deploymentsApi, type DeploymentListParams } from '../api';
+  import type { DeploymentSort } from '../types';
   import DeploymentFormDialog from '../components/DeploymentFormDialog.svelte';
   import DeploymentTimeline from '../components/DeploymentTimeline.svelte';
 
@@ -47,7 +49,17 @@
   const dateFrom = queryString('date_from');
   const dateTo = queryString('date_to');
   const tagId = queryString('tag_id');
-  const order = queryEnum('order', ['asc', 'desc'], 'desc');
+  const SORT_OPTIONS = [
+    { sort: 'created_at', order: 'desc', label: 'Newest first' },
+    { sort: 'created_at', order: 'asc', label: 'Oldest first' },
+    { sort: 'deployed_at', order: 'desc', label: 'Deployed, newest' },
+    { sort: 'deployed_at', order: 'asc', label: 'Deployed, oldest' },
+    { sort: 'status', order: 'asc', label: 'Problems first' },
+    { sort: 'title', order: 'asc', label: 'Title A–Z' },
+  ] as const satisfies readonly SortOption<DeploymentSort>[];
+  const sorting = sortState(SORT_OPTIONS);
+  // Day headings only make sense when records are in deployment-date order.
+  const byDay = $derived(sorting.sort === 'deployed_at');
 
   const params = $derived<DeploymentListParams>({
     page: page.value,
@@ -60,8 +72,8 @@
     date_from: dateFrom.value || undefined,
     date_to: dateTo.value || undefined,
     tag_id: tagId.value || undefined,
-    sort: 'deployed_at',
-    order: order.value,
+    sort: sorting.sort,
+    order: sorting.order,
   });
 
   const deployments = createQuery(() => ({
@@ -111,9 +123,7 @@
 </script>
 
 <div class="page">
-  <PageHeader
-    title="Deployment history"
-  >
+  <PageHeader title="Deployments" description="Every deployment you’ve recorded. Open one to see its notes.">
     {#snippet actions()}
       {#if projectId.value !== ''}
         <Button variant="outline" href={paths.projectCompare(projectId.value)}>
@@ -192,6 +202,9 @@
         </button>
       </span>
     {/if}
+    {#snippet actions()}
+      <SortSelect options={SORT_OPTIONS} state={sorting} label="Sort deployment records" />
+    {/snippet}
   </FilterBar>
 
   {#if deployments.isPending}
@@ -230,7 +243,7 @@
       showEnvironment={environmentId.value === ''}
       showCommit={commitId.value === ''}
       label="Deployment history"
-      groupByDay
+      groupByDay={byDay}
     />
     <div class="mt-6 border-t pt-3">
       <Pagination meta={deployments.data.meta} onchange={(next) => (page.value = next)} label="records" />

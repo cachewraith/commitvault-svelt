@@ -3,7 +3,7 @@
   import * as Tooltip from '$lib/components/ui/tooltip';
   import { router } from '$lib/router';
   import { cn } from '$lib/utils/cn';
-  import { isNavItemActive, PRIMARY_NAV, SECONDARY_NAV, type NavItem } from './navigation';
+  import { isNavItemActive, NAV_SECTIONS, SECONDARY_NAV, type NavItem } from './navigation';
 
   interface Props {
     /** Icon-only rail (desktop collapsed state). */
@@ -64,11 +64,27 @@
 {/snippet}
 
 <nav aria-label="Main" class="flex min-h-0 flex-1 flex-col justify-between gap-4 overflow-y-auto px-2 py-3">
-  <ul class={cn('flex flex-col gap-0.5', collapsed && 'items-center')}>
-    {#each PRIMARY_NAV as item (item.href)}
-      {@render entry(item)}
+  <div class="flex flex-col gap-4">
+    {#each NAV_SECTIONS as section, index (index)}
+      <div class="flex flex-col gap-1">
+        {#if section.label}
+          {#if collapsed}
+            <span class="bg-sidebar-border mx-auto h-px w-5" aria-hidden="true"></span>
+          {:else}
+            <span class="text-muted-foreground/80 px-2.5 text-[0.6875rem] font-medium">{section.label}</span>
+          {/if}
+        {/if}
+        <ul
+          class={cn('flex flex-col gap-0.5', collapsed && 'items-center')}
+          aria-label={section.label ?? 'Workspace'}
+        >
+          {#each section.items as item (item.href)}
+            {@render entry(item)}
+          {/each}
+        </ul>
+      </div>
     {/each}
-  </ul>
+  </div>
   <ul class={cn('flex flex-col gap-0.5', collapsed && 'items-center')}>
     {#each SECONDARY_NAV as item (item.href)}
       {@render entry(item)}

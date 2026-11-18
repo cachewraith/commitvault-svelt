@@ -21,7 +21,7 @@
 {#if notes.length > 0}
   <ul aria-label={label} class="divide-y">
     {#each notes as note (note.id)}
-      <li class="flex items-start gap-3 py-2 text-sm">
+      <li class="animate-enter flex items-start gap-3 py-2 text-sm">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-1.5">
             {#if note.is_pinned}

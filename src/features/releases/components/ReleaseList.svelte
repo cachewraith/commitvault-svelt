@@ -21,7 +21,7 @@
 {#if releases.length > 0}
   <ul aria-label={label} class="divide-y">
     {#each releases as release (release.id)}
-      <li class="flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
+      <li class="animate-enter flex flex-wrap items-center gap-x-3 gap-y-1 py-2 text-sm">
         <a
           href={paths.release(release.id)}
           class="text-brand shrink-0 font-mono text-[0.8125rem] font-medium hover:underline"

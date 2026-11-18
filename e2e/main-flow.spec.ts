@@ -120,7 +120,12 @@ test('4 · records commits', async () => {
 });
 
 test('4b · lists branches and opens one', async () => {
-  await page.goto(`/projects/${projectId}/branches`);
+  // Project sections are tabs under the project header.
+  await page.goto(`/projects/${projectId}`);
+  const tabs = page.getByRole('navigation', { name: 'Project sections' });
+  await tabs.getByRole('link', { name: 'Branches' }).click();
+  await expect(page).toHaveURL(new RegExp(`/projects/${projectId}/branches$`));
+  await expect(tabs.getByRole('link', { name: 'Branches' })).toHaveAttribute('aria-current', 'page');
   await expect(page.getByRole('heading', { name: 'Branches', level: 1 })).toBeVisible();
   await expect(page.getByRole('link', { name: 'main', exact: true })).toBeVisible();
 
