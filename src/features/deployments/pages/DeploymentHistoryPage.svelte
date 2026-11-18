@@ -13,7 +13,6 @@
   import { queryKeys } from '$lib/api';
   import {
     DateRangeFilter,
-    DetailPanel,
     EmptyState,
     ErrorState,
     FilterBar,
@@ -25,7 +24,7 @@
     SearchInput,
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
-  import { detailPanel, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import { queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
   import { DEPLOYMENT_STATUSES } from '$lib/types';
   import { commitsApi } from '$features/commits/api';
   import FilterSelect from '$features/commits/components/FilterSelect.svelte';
@@ -34,7 +33,6 @@
   import TagSelect from '$features/tags/components/TagSelect.svelte';
   import { paths } from '$routes/paths';
   import { deploymentsApi, type DeploymentListParams } from '../api';
-  import DeploymentDetail from '../components/DeploymentDetail.svelte';
   import DeploymentFormDialog from '../components/DeploymentFormDialog.svelte';
   import DeploymentTimeline from '../components/DeploymentTimeline.svelte';
 
@@ -109,14 +107,12 @@
 
   const moreActive = $derived([dateFrom.value || dateTo.value, tagId.value].filter((value) => value !== '').length);
 
-  const panel = detailPanel();
   let createOpen = $state(false);
 </script>
 
 <div class="page">
   <PageHeader
     title="Deployment history"
-    description="Deployments you recorded, newest first. A record documents an event; it is not verified against any server."
   >
     {#snippet actions()}
       {#if projectId.value !== ''}
@@ -235,7 +231,6 @@
       showCommit={commitId.value === ''}
       label="Deployment history"
       groupByDay
-      {panel}
     />
     <div class="mt-6 border-t pt-3">
       <Pagination meta={deployments.data.meta} onchange={(next) => (page.value = next)} label="records" />
@@ -249,16 +244,3 @@
   environmentId={projectId.value !== '' && environmentId.value !== '' ? environmentId.value : undefined}
   commitId={projectId.value !== '' && commitId.value !== '' ? commitId.value : undefined}
 />
-
-<DetailPanel
-  open={panel.id !== null}
-  onclose={panel.close}
-  label="Deployment record"
-  fullPageHref={panel.id ? paths.deployment(panel.id) : undefined}
->
-  {#if panel.id}
-    {#key panel.id}
-      <DeploymentDetail deploymentId={panel.id} layout="panel" ondeleted={panel.close} />
-    {/key}
-  {/if}
-</DetailPanel>

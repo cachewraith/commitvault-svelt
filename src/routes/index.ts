@@ -35,6 +35,7 @@ export const routes: RouteDefinition[] = [
   { path: '/environments', title: 'Environments', load: () => import('$features/environments/pages/EnvironmentOverviewPage.svelte') },
 
   { path: '/commits', title: 'Commits', load: () => import('$features/commits/pages/CommitListPage.svelte') },
+  { path: '/timeline', title: 'Timeline', load: () => import('$features/commits/pages/TimelinePage.svelte') },
   { path: '/commits/:commitId', title: 'Commit', load: () => import('$features/commits/pages/CommitDetailPage.svelte') },
 
   { path: '/deployments', title: 'Deployments', load: () => import('$features/deployments/pages/DeploymentHistoryPage.svelte') },
@@ -60,3 +61,16 @@ export const notFoundRoute: RouteDefinition = {
   access: 'public',
   load: () => import('$features/errors/pages/NotFoundPage.svelte'),
 };
+
+/**
+ * Record pages that also open in the app-wide side panel: a plain click on a
+ * link to one of these paths shows the record over the current screen.
+ */
+export const panelRoutes = [
+  { type: 'project', path: '/projects/:projectId' },
+  { type: 'branch', path: '/branches/:branchId' },
+  { type: 'commit', path: '/commits/:commitId' },
+  { type: 'deployment', path: '/deployments/:deploymentId' },
+  { type: 'release', path: '/releases/:releaseId' },
+  { type: 'note', path: '/notes/:noteId' },
+] as const;

@@ -23,6 +23,7 @@ export const paths = {
   environments: (query?: QueryInput) => withQuery('/environments', query),
 
   commits: (query?: QueryInput) => withQuery('/commits', query),
+  timeline: (query?: QueryInput) => withQuery('/timeline', query),
   commit: (commitId: string) => buildPath('/commits/:commitId', { commitId }),
 
   deployments: (query?: QueryInput) => withQuery('/deployments', query),

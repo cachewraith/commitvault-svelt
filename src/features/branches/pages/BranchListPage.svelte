@@ -8,7 +8,7 @@
   import PencilIcon from '@lucide/svelte/icons/pencil';
   import PlusIcon from '@lucide/svelte/icons/plus';
   import TrashIcon from '@lucide/svelte/icons/trash';
-  import { isApiError, queryKeys, type SortOrder } from '$lib/api';
+  import { isApiError, queryKeys, removeFromCache, type SortOrder } from '$lib/api';
   import {
     DataTable,
     DataTableBody,
@@ -88,11 +88,17 @@
   const remove = createMutation(() => ({
     mutationFn: (input: { branch: Branch; cascade: boolean }) =>
       branchesApi.remove(input.branch.id, { cascade: input.cascade }),
-    onSuccess: (_: void, input) => {
-      invalidateBranches(queryClient);
+    // Optimistic: the row disappears at once; restored if the server refuses.
+    onMutate: (input) => {
+      const restore = removeFromCache(queryClient, input.branch.id, [queryKeys.branches.lists()]);
       toast.success(`Branch “${input.branch.name}” deleted`);
+      return { restore };
     },
-    onError: (error: unknown) => toastError(error, 'Could not delete the branch.'),
+    onError: (error: unknown, _input, context) => {
+      context?.restore();
+      toastError(error, 'Could not delete the branch. It is back in the list.');
+    },
+    onSettled: () => invalidateBranches(queryClient),
   }));
 
   async function confirmRemove(branch: Branch) {
@@ -120,7 +126,6 @@
   {:else}
     <PageHeader
       title="Branches"
-      description="Branches you record commits on. CommitVault never reads your repository."
       breadcrumbs={[
         { label: 'Projects', href: paths.projects() },
         { label: project.data?.name ?? 'Project', href: paths.project(projectId) },

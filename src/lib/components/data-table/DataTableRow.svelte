@@ -4,7 +4,7 @@
 -->
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { navigate } from '$lib/router';
+  import { navigate, openPanelFor, recordPanel } from '$lib/router';
   import { cn } from '$lib/utils/cn';
 
   interface Props {
@@ -19,6 +19,9 @@
 
   let { children, href, onopen, selected = false, class: className }: Props = $props();
 
+  // The row of the record shown in the side panel is highlighted.
+  const active = $derived(selected || recordPanel.shows(href));
+
   function onclick(event: MouseEvent) {
     if ((!href && !onopen) || event.defaultPrevented || event.button !== 0) return;
     const target = event.target as Element | null;
@@ -30,7 +33,7 @@
       return;
     }
     if (onopen) onopen();
-    else if (href) navigate(href);
+    else if (href && !openPanelFor(href)) navigate(href);
   }
 </script>
 
@@ -39,10 +42,10 @@
   class={cn(
     'hover:bg-muted/40 border-b transition-colors',
     (href || onopen) && 'cursor-pointer',
-    selected && 'bg-muted/60',
+    active && 'bg-muted/60',
     className,
   )}
-  data-state={selected ? 'selected' : undefined}
+  data-state={active ? 'selected' : undefined}
   {onclick}
 >
   {@render children()}

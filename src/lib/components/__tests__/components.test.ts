@@ -18,14 +18,17 @@ import SortHarness from './fixtures/SortHarness.svelte';
 const HASH = '9fceb02d0ae598e95dc970b74767f19372d61af8';
 
 describe('HashChip', () => {
-  it('shows the short hash and copies the full hash', async () => {
+  it('is plain text by default and copies the full hash when copyable', async () => {
     const user = userEvent.setup();
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { ...navigator, clipboard: { writeText } });
 
-    render(HashChip, { hash: HASH });
-
+    const { unmount } = render(HashChip, { hash: HASH });
     expect(screen.getByText('9fceb02')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    unmount();
+
+    render(HashChip, { hash: HASH, copyable: true });
     await user.click(screen.getByRole('button', { name: 'Copy commit hash' }));
 
     expect(writeText).toHaveBeenCalledWith(HASH);

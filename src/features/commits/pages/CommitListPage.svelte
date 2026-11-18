@@ -19,7 +19,6 @@
     DataTableRow,
     DateRangeFilter,
     DateTime,
-    DetailPanel,
     EmptyState,
     ErrorState,
     FilterBar,
@@ -32,7 +31,7 @@
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
   import GitBranchIcon from '@lucide/svelte/icons/git-branch';
-  import { detailPanel, openInPanel, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import { queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
   import { branchesApi } from '$features/branches/api';
   import BranchSelect from '$features/branches/components/BranchSelect.svelte';
   import EnvironmentSelect from '$features/environments/components/EnvironmentSelect.svelte';
@@ -42,7 +41,6 @@
   import { paths } from '$routes/paths';
   import { commitsApi, type CommitListParams } from '../api';
   import CommitDeploymentBadges from '../components/CommitDeploymentBadges.svelte';
-  import CommitDetail from '../components/CommitDetail.svelte';
   import CommitFormDialog from '../components/CommitFormDialog.svelte';
   import FilterSelect from '../components/FilterSelect.svelte';
   import { DEPLOYMENT_FILTER_LABELS, commitSubject } from '../format';
@@ -147,12 +145,11 @@
     [dateFrom.value || dateTo.value, tagId.value, environmentId.value].filter((value) => value !== '').length,
   );
 
-  const panel = detailPanel();
   let createOpen = $state(false);
 </script>
 
 <div class="page">
-  <PageHeader title="Commits" description="Commits you recorded by hand, across all projects.">
+  <PageHeader title="Commits">
     {#snippet actions()}
       <Button onclick={() => (createOpen = true)}>
         <PlusIcon aria-hidden="true" />
@@ -286,15 +283,10 @@
       </DataTableHeader>
       <DataTableBody>
         {#each commits.data.data as commit (commit.id)}
-          <DataTableRow
-            href={paths.commit(commit.id)}
-            onopen={() => panel.open(commit.id)}
-            selected={panel.id === commit.id}
-          >
+          <DataTableRow href={paths.commit(commit.id)}>
             <DataTableCell class="max-w-xl min-w-64">
               <a
                 href={paths.commit(commit.id)}
-                onclick={openInPanel(panel, commit.id)}
                 class="text-foreground hover:text-brand block truncate font-medium"
                 title={commitSubject(commit.commit_message)}
               >
@@ -344,16 +336,3 @@
 </div>
 
 <CommitFormDialog bind:open={createOpen} projectId={projectId.value || undefined} />
-
-<DetailPanel
-  open={panel.id !== null}
-  onclose={panel.close}
-  label="Commit details"
-  fullPageHref={panel.id ? paths.commit(panel.id) : undefined}
->
-  {#if panel.id}
-    {#key panel.id}
-      <CommitDetail commitId={panel.id} layout="panel" ondeleted={panel.close} />
-    {/key}
-  {/if}
-</DetailPanel>

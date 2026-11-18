@@ -8,7 +8,7 @@
   import GitCommitIcon from '@lucide/svelte/icons/git-commit-horizontal';
   import PencilIcon from '@lucide/svelte/icons/pencil';
   import TrashIcon from '@lucide/svelte/icons/trash';
-  import { queryKeys } from '$lib/api';
+  import { queryKeys, removeFromCache } from '$lib/api';
   import {
     confirm,
     DateTime,
@@ -92,14 +92,20 @@
 
   const remove = createMutation(() => ({
     mutationFn: () => releasesApi.remove(releaseId),
-    onSuccess: () => {
-      queryClient.removeQueries({ queryKey: queryKeys.releases.detail(releaseId) });
-      invalidateRelated();
+    // Optimistic: gone from every list at once; restored if the server refuses.
+    onMutate: () => {
+      const restore = removeFromCache(queryClient, releaseId, [queryKeys.releases.lists(), queryKeys.dashboard.all]);
       toast.success('Release deleted');
       if (ondeleted) ondeleted();
       else navigate(paths.releases(), { replace: true });
+      return { restore };
     },
-    onError: (error) => toastError(error, 'Could not delete the release.'),
+    onSuccess: () => queryClient.removeQueries({ queryKey: queryKeys.releases.detail(releaseId) }),
+    onError: (error, _input, context) => {
+      context?.restore();
+      toastError(error, 'Could not delete the release. It is back in the list.');
+    },
+    onSettled: () => invalidateRelated(),
   }));
 
   async function deleteRelease(current: ReleaseDetail) {

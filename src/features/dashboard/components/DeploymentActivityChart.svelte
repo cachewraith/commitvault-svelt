@@ -7,7 +7,7 @@
 <script lang="ts">
   import { statusPresentation } from '$lib/components';
   import { DEPLOYMENT_STATUSES, type DeploymentStatus } from '$lib/types';
-  import { formatNumber, pluralize } from '$lib/utils';
+  import { DATE_LOCALE, formatNumber, pluralize } from '$lib/utils';
   import type { DailyDeployments } from '../types';
 
   let { days }: { days: DailyDeployments[] } = $props();
@@ -40,7 +40,7 @@
   const peak = $derived(Math.max(1, ...days.map(dayTotal)));
 
   /** `2026-11-17` → "Nov 17" (the API reports UTC calendar days). */
-  const dayFormat = new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const dayFormat = new Intl.DateTimeFormat(DATE_LOCALE, { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const dayLabel = (date: string) => dayFormat.format(new Date(`${date}T00:00:00Z`));
 
   const breakdown = (counts: Record<DeploymentStatus, number>) =>

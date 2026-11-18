@@ -124,7 +124,7 @@
 {/snippet}
 
 <div class="page">
-  <PageHeader title="Settings" description="Your account and how CommitVault looks on this device." />
+  <PageHeader title="Settings" />
 
   <div class="flex max-w-3xl flex-col gap-6">
     {@render card('settings-account', 'Account', 'The single administrator account of this installation.', account)}

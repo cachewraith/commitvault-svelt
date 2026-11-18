@@ -9,6 +9,7 @@
   import AlertIcon from '@lucide/svelte/icons/triangle-exclamation-point';
   import { Button } from '$lib/components/ui/button';
   import { cn } from '$lib/utils/cn';
+  import { DATE_LOCALE } from '$lib/utils/format';
   import type { SaveStatus } from '../autosave.svelte';
 
   interface Props {
@@ -31,7 +32,7 @@
     class: className,
   }: Props = $props();
 
-  const time = new Intl.DateTimeFormat(undefined, { hour: '2-digit', minute: '2-digit' });
+  const time = new Intl.DateTimeFormat(DATE_LOCALE, { hour: '2-digit', minute: '2-digit' });
 
   const text = $derived.by(() => {
     switch (status) {

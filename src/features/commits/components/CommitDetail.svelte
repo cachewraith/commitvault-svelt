@@ -10,7 +10,7 @@
   import PencilIcon from '@lucide/svelte/icons/pencil';
   import RocketIcon from '@lucide/svelte/icons/rocket';
   import TrashIcon from '@lucide/svelte/icons/trash';
-  import { isApiError, queryKeys } from '$lib/api';
+  import { isApiError, queryKeys, removeFromCache } from '$lib/api';
   import {
     BranchBadge,
     CopyButton,
@@ -75,20 +75,33 @@
 
   const removeCommit = createMutation(() => ({
     mutationFn: (cascade: boolean) => commitsApi.remove(commitId, { cascade }),
-    onSuccess: () => {
-      // Drop this commit's own queries first so nothing refetches a deleted record.
-      queryClient.removeQueries({ queryKey: queryKeys.commits.detail(commitId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.commits.lists() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.environments.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.releases.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+    // Optimistic: gone from every list at once; restored if the server refuses.
+    onMutate: () => {
+      const restore = removeFromCache(queryClient, commitId, [queryKeys.commits.lists(), queryKeys.dashboard.all]);
       toast.success('Commit deleted');
       if (ondeleted) ondeleted();
       else navigate(paths.commits(), { replace: true });
+      return { restore };
     },
-    onError: (error) => toastError(error, 'Could not delete the commit.'),
+    // Drop this commit's own query so nothing refetches a deleted record.
+    onSuccess: () => queryClient.removeQueries({ queryKey: queryKeys.commits.detail(commitId) }),
+    onError: (error, _cascade, context) => {
+      context?.restore();
+      toastError(error, 'Could not delete the commit. It is back in the list.');
+    },
+    onSettled: () => {
+      for (const key of [
+        queryKeys.commits.lists(),
+        queryKeys.branches.all,
+        queryKeys.deployments.all,
+        queryKeys.environments.all,
+        queryKeys.releases.all,
+        queryKeys.projects.all,
+        queryKeys.dashboard.all,
+      ]) {
+        void queryClient.invalidateQueries({ queryKey: key });
+      }
+    },
   }));
 
   async function remove() {
@@ -100,7 +113,7 @@
         ? {
             title: `Delete commit ${current.short_hash}?`,
             description:
-              'The commit is removed from CommitVault together with its tags and release associations. Nothing changes in your repository.',
+              'Its tags and release associations go with it.',
             confirmLabel: 'Delete commit',
             destructive: true,
           }
@@ -215,8 +228,8 @@
           {#if data.environments.length === 0}
             <EmptyState
               icon={RocketIcon}
-              title="No deployment recorded for this commit"
-              description="That only means nothing has been noted in CommitVault. Record a deployment when this commit goes out to an environment."
+              title="No deployment recorded"
+              description="Record one when this commit goes out to an environment."
               compact
             >
               {#snippet action()}

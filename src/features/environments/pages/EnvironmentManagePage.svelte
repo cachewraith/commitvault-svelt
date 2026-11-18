@@ -10,7 +10,7 @@
   import PlusIcon from '@lucide/svelte/icons/plus';
   import ServerIcon from '@lucide/svelte/icons/server';
   import TrashIcon from '@lucide/svelte/icons/trash';
-  import { isApiError, queryKeys } from '$lib/api';
+  import { isApiError, queryKeys, removeFromCache } from '$lib/api';
   import {
     confirm,
     EmptyState,
@@ -135,19 +135,23 @@
   const remove = createMutation(() => ({
     mutationFn: (input: { environment: Environment; cascade: boolean }) =>
       environmentsApi.remove(input.environment.id, { cascade: input.cascade }),
-    onSuccess: (_result, input) => {
-      invalidateEnvironments(queryClient);
+    // Optimistic: the row disappears at once; restored if the server refuses.
+    onMutate: (input) => {
+      const restore = removeFromCache(queryClient, input.environment.id, [queryKeys.environments.all]);
       toast.success(
         input.cascade
           ? `Environment “${input.environment.name}” and ${pluralize(input.environment.deployment_count, 'deployment record')} deleted`
           : `Environment “${input.environment.name}” deleted`,
       );
+      return { restore };
     },
-    onError: (error) => {
+    onError: (error, _input, context) => {
+      context?.restore();
       // A 409 means records were added since this list was loaded.
       if (isApiError(error) && error.isConflict) void environments.refetch();
-      toastError(error, 'Could not delete the environment.');
+      toastError(error, 'Could not delete the environment. It is back in the list.');
     },
+    onSettled: () => invalidateEnvironments(queryClient),
   }));
 
   async function destroy(environment: Environment) {
@@ -189,7 +193,7 @@
   {:else}
     <PageHeader
       title="Environments"
-      description={`The places ${project.data.name} is deployed to. The order here is the order used everywhere else.`}
+      description="The order here is the order used everywhere else."
       breadcrumbs={[
         { label: 'Projects', href: paths.projects() },
         { label: project.data.name, href: paths.project(projectId) },

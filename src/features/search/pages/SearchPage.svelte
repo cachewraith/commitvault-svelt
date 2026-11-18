@@ -96,7 +96,7 @@
 </script>
 
 <div class="page">
-  <PageHeader title="Search" description="Find projects, commits, deployments, releases, notes and tags." />
+  <PageHeader title="Search" />
 
   <div class="mb-6 flex flex-col gap-2 sm:flex-row" role="search">
     <SearchInput

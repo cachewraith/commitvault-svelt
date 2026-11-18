@@ -124,11 +124,15 @@ test('4b · lists branches and opens one', async () => {
   await expect(page.getByRole('heading', { name: 'Branches', level: 1 })).toBeVisible();
   await expect(page.getByRole('link', { name: 'main', exact: true })).toBeVisible();
 
+  // Record links open in the side panel, over the list.
   await page.getByRole('link', { name: `fix/${run}`, exact: true }).click();
-  await expect(page).toHaveURL(/\/branches\/[0-9a-f-]{36}$/);
-  await expect(page.getByRole('heading', { name: `fix/${run}`, level: 1 })).toBeVisible();
-  await expect(page.getByText(fixMessage)).toBeVisible();
-  await expect(page.getByText(commitMessage)).toBeHidden();
+  await expect(page).toHaveURL(/[?&]panel=branch\.[0-9a-f-]{36}/);
+  const panel = page.getByRole('dialog', { name: 'Branch' });
+  await expect(panel.getByRole('heading', { name: `fix/${run}` })).toBeVisible();
+  await expect(panel.getByText(fixMessage)).toBeVisible();
+  await expect(panel.getByText(commitMessage)).toBeHidden();
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
 });
 
 test('5 · records a deployment', async () => {
@@ -157,7 +161,7 @@ test('6 · shows the deployment in the history and on the commit', async () => {
 
   // A record opens in a side panel over the list, with its own URL…
   await entry.first().click();
-  await expect(page).toHaveURL(/\/deployments\?.*view=[0-9a-f-]{36}/);
+  await expect(page).toHaveURL(/\/deployments\?.*panel=deployment\.[0-9a-f-]{36}/);
   const panel = page.getByRole('dialog', { name: 'Deployment record' });
   // Stored commands are shown as text to copy — never as something to run.
   await expect(panel.getByText('sqlx migrate run')).toBeVisible();
@@ -178,6 +182,25 @@ test('6 · shows the deployment in the history and on the commit', async () => {
   await page.goto(`/commits?project_id=${projectId}&deployment_status=none`);
   await expect(page.getByText(fixMessage)).toBeVisible();
   await expect(page.getByText(commitMessage)).toBeHidden();
+});
+
+test('6b · groups a date range by branch, deletes from the panel', async () => {
+  // Default range is the last 7 days; the commits were recorded just now.
+  await page.goto(`/timeline?project_id=${projectId}`);
+  await expect(page.getByRole('region', { name: `Branch fix/${run}` }).getByText(fixMessage)).toBeVisible();
+  await expect(page.getByRole('region', { name: 'Branch main' }).getByText(commitMessage)).toBeVisible();
+
+  // Deleting is optimistic: the panel closes and the row goes at once.
+  await page.goto(`/commits?project_id=${projectId}`);
+  await page.getByRole('link', { name: fixMessage }).click();
+  const panel = page.getByRole('dialog', { name: 'Commit' });
+  await panel.getByRole('button', { name: 'Delete' }).click();
+  await page.getByRole('alertdialog').getByRole('button', { name: 'Delete commit' }).click();
+  await expect(panel).toBeHidden();
+  await expect(page.getByRole('link', { name: fixMessage })).toBeHidden();
+  await page.reload();
+  await expect(page.getByRole('link', { name: commitMessage })).toBeVisible();
+  await expect(page.getByRole('link', { name: fixMessage })).toBeHidden();
 });
 
 test('7 · creates a release with a commit', async () => {

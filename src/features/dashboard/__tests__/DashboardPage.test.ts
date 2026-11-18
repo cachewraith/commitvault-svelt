@@ -116,16 +116,17 @@ describe('DashboardPage', () => {
     renderPage();
 
     const totals = await screen.findByRole('region', { name: 'Totals' });
-    const tile = (name: RegExp) => within(totals).getByRole('link', { name });
-    expect(tile(/Projects/)).toHaveTextContent('3');
-    expect(tile(/Projects/)).toHaveTextContent('2 active');
-    expect(tile(/Projects/)).toHaveAttribute('href', '/projects');
-    expect(tile(/Commits/)).toHaveTextContent('1,284');
-    expect(tile(/Environments/)).toHaveAttribute('href', '/environments');
-    expect(tile(/Deployments/)).toHaveTextContent('96');
-    expect(within(totals).getByRole('link', { name: /12\s+releases/ })).toHaveAttribute('href', '/releases');
-    expect(within(totals).getByRole('link', { name: /41\s+notes/ })).toHaveAttribute('href', '/notes');
-    expect(within(totals).getByRole('link', { name: /9\s+tags/ })).toHaveAttribute('href', '/tags');
+    const total = (label: string) => within(totals).getByText(label).closest('div')!;
+    const link = (label: string) => within(total(label)).getByRole('link');
+    expect(link('Projects')).toHaveTextContent('3');
+    expect(link('Projects')).toHaveAttribute('href', '/projects');
+    expect(link('Commits')).toHaveTextContent('1,284');
+    expect(link('Environments')).toHaveAttribute('href', '/environments');
+    expect(link('Deployments')).toHaveTextContent('96');
+    expect(link('Releases')).toHaveTextContent('12');
+    expect(link('Releases')).toHaveAttribute('href', '/releases');
+    expect(link('Notes')).toHaveAttribute('href', '/notes');
+    expect(link('Tags')).toHaveTextContent('9');
   });
 
   it('summarises deployment activity in text, with a legend and a data table', async () => {

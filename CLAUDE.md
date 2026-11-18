@@ -92,11 +92,12 @@ Aliases: `$lib` → `src/lib`, `$features` → `src/features`, `$routes` → `sr
 | `/projects/:projectId/branches` | `branches/pages/BranchListPage.svelte` | `projectId` |
 | `/branches/:branchId` | `branches/pages/BranchDetailPage.svelte` | `branchId` |
 | `/environments` | `environments/pages/EnvironmentOverviewPage.svelte` | — |
-| `/commits` | `commits/pages/CommitListPage.svelte` | — (`?view=<id>` opens the side panel) |
+| `/commits` | `commits/pages/CommitListPage.svelte` | — |
+| `/timeline` | `commits/pages/TimelinePage.svelte` | — (`?from=&to=` days, `?project_id=`): commits of a date range grouped by branch |
 | `/commits/:commitId` | `commits/pages/CommitDetailPage.svelte` | `commitId` |
-| `/deployments` | `deployments/pages/DeploymentHistoryPage.svelte` | — (`?view=<id>` opens the side panel) |
+| `/deployments` | `deployments/pages/DeploymentHistoryPage.svelte` | — |
 | `/deployments/:deploymentId` | `deployments/pages/DeploymentDetailPage.svelte` | `deploymentId` |
-| `/releases` | `releases/pages/ReleaseListPage.svelte` | — (`?view=<id>` opens the side panel) |
+| `/releases` | `releases/pages/ReleaseListPage.svelte` | — |
 | `/releases/:releaseId` | `releases/pages/ReleaseDetailPage.svelte` | `releaseId` |
 | `/notes` | `notes/pages/NoteListPage.svelte` | — |
 | `/notes/new` and `/notes/:noteId/edit` | `notes/pages/NoteEditorPage.svelte` | `noteId?` (undefined = create) |
@@ -109,9 +110,13 @@ Also: `auth/pages/LoginPage.svelte` (`/login`, guest — password step, then the
 API answers `code_required`), `auth/pages/ForgotPasswordPage.svelte` (`/forgot-password`, guest) and
 `errors/pages/NotFoundPage.svelte` (fallback).
 
-Detail pages of commits, deployments and releases are thin wrappers around
-`<feature>/components/<Record>Detail.svelte` (`layout="page" | "panel"`, `ondeleted`); the list pages
-render the same component inside `DetailPanel`. Notes keep their full-page reading view.
+**Side panel.** Projects, branches, commits, deployments, releases and notes open in one app-wide
+panel (`features/records/RecordPanelHost.svelte`, URL `?panel=<type>.<id>`). Their detail pages are
+thin wrappers around `<feature>/components/<Record>Detail.svelte` (`layout="page" | "panel"`,
+`ondeleted`), which the host loads lazily. Any plain click on a link to a record page
+(`panelRoutes` in `src/routes/index.ts`) opens the panel instead of navigating — so just link with
+`href={paths.commit(id)}`; nothing else to wire. Modifier clicks, links inside `[data-full-page]`
+(breadcrumbs, "Open full page") and links to the page already shown navigate normally.
 
 ### Shared feature components (import these instead of rebuilding them)
 
@@ -169,10 +174,9 @@ router.back('/commits');                       // history.back() with fallback
 
 setQuery({ status: 'failed', page: null });    // merge into ?query (replaceState; null/''/undefined removes)
 
-const panel = detailPanel();                   // side-panel URL state: ?view=<id>
-panel.open(id);                                // pushes a history entry → Back closes it
-panel.close();                                 // history.back() for our entry, else drops ?view
-<a href={paths.commit(id)} onclick={openInPanel(panel, id)}>  // modifier clicks keep the full page
+recordPanel.open({ type: 'commit', id });      // side panel: ?panel=commit.<id>, Back closes it
+recordPanel.close();                           // history.back() for our entry, else drops ?panel
+recordPanel.shows(paths.commit(id));           // is this record open? (rows highlight themselves)
 setPageTitle(project.name);                    // document.title = "<name> · CommitVault"
 ```
 
@@ -249,6 +253,8 @@ are in `$lib/api/types`; hand-written primitives (statuses, `RichTextDoc`, `User
 ```
 
 Available: `queryKeys.dashboard | projects | environments | branches | commits | deployments | releases | notes | tags | search | auth`.
+Deletes are optimistic: in `onMutate` call `removeFromCache(queryClient, id, [keys…])` (from
+`$lib/api`), close the panel/page and toast; restore in `onError`; invalidate in `onSettled`.
 After a mutation invalidate the resource's `.all` **and** anything derived from it — at minimum
 `queryKeys.dashboard.all`; deployments also affect `queryKeys.environments.all` and
 `queryKeys.commits.all` (deployment status/counts); tag changes affect every tagged resource.
@@ -445,7 +451,7 @@ Import shared components from the barrel `$lib/components`; shadcn primitives fr
 | `FormField` | →`label`, →`children(field)` snippet, `error`, `hint`, `required`, `optional`, `hideLabel`, `labelAside` | Spread `field` on the control. |
 | `FilterBar` | →`children`, `actions` snippet, `active`, `onreset`, `label` | "Clear filters" appears when `active`. |
 | `MoreFilters` | →`children`, `activeCount`, `label` | Popover for secondary filters inside a `FilterBar`; the button shows how many are set. Keep search, project and one or two key filters outside. |
-| `DetailPanel` | →`open`, →`onclose`, →`label`, `fullPageHref`, →`children` | Record details sliding in from the right (full width on small screens), with "Open full page". Drive it with `detailPanel()`. |
+| `DetailPanel` | →`open`, →`onclose`, →`label`, `fullPageHref`, →`children` | Sheet sliding in from the right (full width on small screens), with "Open full page". Used by the app-wide `RecordPanelHost`; you rarely need it directly. |
 | `DateRangeFilter` | →`onchange({from, to})`, `from`, `to`, `label`, `disabled` | Emits ISO start/end of the local day (`date_from`/`date_to`). |
 | `Combobox` | →`options: ComboboxOption[]`, `value` (bindable), `onchange`, `placeholder`, `clearable`, `onsearch` (server-side), `loading`, `selectedLabel`, `oncreate(label)`, `createLabel`, FormField attrs | Searchable single select; `oncreate` offers "Create «text»" for unmatched input. |
 | `MultiCombobox` | →`options`, `values` (bindable), `onchange`, `selectedOptions`, `oncreate(label)`, `max`, `onsearch`, `loading` | Searchable multi select (tags, release commits). |
@@ -473,7 +479,10 @@ skeleton, sonner, switch, table, tabs, textarea, tooltip. Add more with
 names if `bun run check` complains). `Button` sizes: `xs | sm | default | lg | icon-xs | icon-sm | icon | icon-lg`;
 variants: `default | outline | secondary | ghost | destructive | link`.
 
-Utilities (`$lib/utils`): `cn`, `formatDate`, `formatDateTime`, `formatFull`, `formatRelative`,
+Dates are always day-month-year (`17 Nov 2026`, 24-hour times; `DATE_LOCALE = 'en-GB'`), ranges
+`10 Nov 2026 → 17 Nov 2026` (`formatDateRange`).
+
+Utilities (`$lib/utils`): `cn`, `formatDate`, `formatDateTime`, `formatTime`, `formatDateRange`, `formatFull`, `formatRelative`,
 `formatNumber`, `pluralize`, `toDateInputValue`, `toDateTimeInputValue`, `fromDateTimeInputValue`,
 `startOfLocalDayIso`, `endOfLocalDayIso`, `shortHash`, `isCommitHash`, `slugify`, `debounce`,
 `copyToClipboard`, `isHexColor`, `safeHexColor`, `COLOR_SWATCHES`, `isSafeUrl`, `safeExternalUrl`.

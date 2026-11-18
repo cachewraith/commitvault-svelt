@@ -1,7 +1,8 @@
 <!--
-  Commit hash in monospace with a copy button; the full hash is always what is
-  copied. `href` makes the hash an in-app link (commit detail); `externalUrl`
-  adds a link to the commit on the Git host.
+  Commit hash in monospace, as plain text — no box. `copyable` adds a copy
+  button (the full hash is copied); `href` makes the hash an in-app link;
+  `externalUrl` adds a link to the commit on the Git host. Lists keep it bare;
+  detail views opt into the buttons.
 -->
 <script lang="ts">
   import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
@@ -31,7 +32,7 @@
     full = false,
     href,
     externalUrl,
-    copyable = true,
+    copyable = false,
     class: className,
   }: Props = $props();
 
@@ -39,23 +40,13 @@
   const external = $derived(safeExternalUrl(externalUrl));
 </script>
 
-<span
-  class={cn(
-    'bg-muted/60 inline-flex h-6 max-w-full items-center gap-0.5 rounded-md border pr-0.5 pl-1.5 align-middle',
-    !copyable && !external && 'pr-1.5',
-    className,
-  )}
->
+<span class={cn('inline-flex max-w-full items-center gap-0.5 align-middle', className)}>
   {#if href}
-    <a
-      {href}
-      class="text-foreground hover:text-brand truncate font-mono text-xs font-medium"
-      title={hash}
-    >
+    <a {href} class="text-muted-foreground hover:text-foreground truncate font-mono text-xs" title={hash}>
       {display}
     </a>
   {:else}
-    <code class="text-foreground truncate font-mono text-xs font-medium" title={hash}>{display}</code>
+    <code class="text-muted-foreground truncate font-mono text-xs" title={hash}>{display}</code>
   {/if}
   {#if copyable}
     <CopyButton value={hash} label="Copy commit hash" class="size-5" />

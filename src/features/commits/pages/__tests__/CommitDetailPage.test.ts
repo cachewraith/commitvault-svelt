@@ -81,15 +81,15 @@ describe('CommitDetailPage', () => {
     expect(screen.queryByRole('link', { name: /Open on Git host/ })).not.toBeInTheDocument();
   });
 
-  it('explains that no record is not the same as not deployed', async () => {
+  it('talks about records, never claims the commit was not deployed', async () => {
     mockApi({
       'GET /commits/c1': () => data(commit()),
       'GET /deployments': () => list([]),
     });
     renderPage();
 
-    expect(await screen.findByText('No deployment recorded for this commit')).toBeInTheDocument();
-    expect(screen.getByText(/only means nothing has been noted in CommitVault/)).toBeInTheDocument();
+    expect(await screen.findByText('No deployment recorded')).toBeInTheDocument();
+    expect(screen.queryByText(/not deployed|never deployed/i)).not.toBeInTheDocument();
   });
 
   it('deletes a commit without history after a plain confirmation (no cascade)', async () => {

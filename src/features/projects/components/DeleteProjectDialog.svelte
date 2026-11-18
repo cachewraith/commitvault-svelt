@@ -4,6 +4,7 @@
 -->
 <script lang="ts">
   import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+  import { queryKeys, removeFromCache } from '$lib/api';
   import { FormField, toast, toastError } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
   import * as Dialog from '$lib/components/ui/dialog';
@@ -32,18 +33,26 @@
 
   const remove = createMutation(() => ({
     mutationFn: () => projectsApi.remove(project.id),
-    onSuccess: () => {
+    // Optimistic: leave right away; the project reappears if the server refuses.
+    onMutate: () => {
+      const restore = removeFromCache(queryClient, project.id, [queryKeys.projects.lists(), queryKeys.dashboard.all]);
       toast.success(`Project “${project.name}” deleted`);
       open = false;
       ondeleted?.();
+      return { restore };
+    },
+    onError: (error, _input, context) => {
+      context?.restore();
+      toastError(error, 'Could not delete the project.');
+    },
+    onSettled: () => {
       // Everything cached may reference the project — except its own record,
-      // which no longer exists and must not be refetched by the page we are leaving.
+      // which no longer exists and must not be refetched by the page we left.
       void queryClient.invalidateQueries({
         predicate: (query) =>
           !(query.queryKey[0] === 'projects' && query.queryKey[1] === 'detail' && query.queryKey[2] === project.id),
       });
     },
-    onError: (error) => toastError(error, 'Could not delete the project.'),
   }));
 
   function submit(event: SubmitEvent) {

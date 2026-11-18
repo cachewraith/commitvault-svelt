@@ -1,4 +1,4 @@
-<!-- Environment name with its user-chosen colour dot. Colours are validated hex literals. -->
+<!-- Environment name with its user-chosen colour dot — text, not a box. Colours are validated hex literals. -->
 <script lang="ts">
   import { cn } from '$lib/utils/cn';
   import { safeHexColor } from '$lib/utils/color';
@@ -17,9 +17,9 @@
   const dot = $derived(safeHexColor(color));
   const classes = $derived(
     cn(
-      'bg-card text-foreground inline-flex max-w-[24ch] items-center gap-1.5 rounded-md border align-middle font-medium',
-      size === 'sm' ? 'h-5 px-1.5 text-xs' : 'h-6 px-2 text-sm',
-      href && 'hover:bg-muted transition-colors',
+      'text-foreground inline-flex max-w-[24ch] items-center gap-1.5 align-middle',
+      size === 'sm' ? 'text-xs' : 'text-sm',
+      href && 'hover:underline underline-offset-2',
       className,
     ),
   );

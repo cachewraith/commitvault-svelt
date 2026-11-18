@@ -124,7 +124,6 @@
 <div class="page">
   <PageHeader
     title="Notes"
-    description="Technical notes, decisions, runbooks and commands worth remembering."
   >
     {#snippet actions()}
       <Button href={newNoteHref}>

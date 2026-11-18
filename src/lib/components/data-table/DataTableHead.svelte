@@ -63,7 +63,7 @@
     <button
       type="button"
       class={cn(
-        'hover:text-foreground -mx-1 inline-flex items-center gap-1 rounded-sm px-1 uppercase transition-colors',
+        'hover:text-foreground -mx-1 inline-flex items-center gap-1 rounded-sm px-1 transition-colors',
         active && 'text-foreground',
       )}
       onclick={toggle}

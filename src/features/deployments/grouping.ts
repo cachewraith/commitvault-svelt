@@ -1,4 +1,4 @@
-import { toDate, toDateInputValue } from '$lib/utils/format';
+import { DATE_LOCALE, toDate, toDateInputValue } from '$lib/utils/format';
 
 export interface DayGroup<T> {
   /** Local calendar day, `YYYY-MM-DD`. */
@@ -8,7 +8,7 @@ export interface DayGroup<T> {
   items: T[];
 }
 
-const dayFormatter = new Intl.DateTimeFormat(undefined, {
+const dayFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
   weekday: 'long',
   year: 'numeric',
   month: 'long',

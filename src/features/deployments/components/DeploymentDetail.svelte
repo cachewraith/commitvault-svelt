@@ -8,7 +8,7 @@
   import { createMutation, createQuery, useQueryClient } from '@tanstack/svelte-query';
   import PencilIcon from '@lucide/svelte/icons/pencil';
   import TrashIcon from '@lucide/svelte/icons/trash';
-  import { isApiError, queryKeys } from '$lib/api';
+  import { isApiError, queryKeys, removeFromCache } from '$lib/api';
   import {
     BranchBadge,
     CopyButton,
@@ -59,25 +59,41 @@
 
   const removeDeployment = createMutation(() => ({
     mutationFn: () => deploymentsApi.remove(deploymentId),
-    onSuccess: () => {
-      queryClient.removeQueries({ queryKey: queryKeys.deployments.detail(deploymentId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.deployments.lists() });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.environments.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.commits.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.projects.all });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.dashboard.all });
+    // Optimistic: gone from every list at once; restored if the server refuses.
+    onMutate: () => {
+      const restore = removeFromCache(queryClient, deploymentId, [
+        queryKeys.deployments.lists(),
+        queryKeys.dashboard.all,
+      ]);
       toast.success('Deployment record deleted');
       if (ondeleted) ondeleted();
       else navigate(paths.deployments(), { replace: true });
+      return { restore };
     },
-    onError: (error) => toastError(error, 'Could not delete the deployment record.'),
+    onSuccess: () => queryClient.removeQueries({ queryKey: queryKeys.deployments.detail(deploymentId) }),
+    onError: (error, _input, context) => {
+      context?.restore();
+      toastError(error, 'Could not delete the deployment record. It is back in the list.');
+    },
+    onSettled: () => {
+      for (const key of [
+        queryKeys.deployments.lists(),
+        queryKeys.environments.all,
+        queryKeys.commits.all,
+        queryKeys.branches.all,
+        queryKeys.projects.all,
+        queryKeys.dashboard.all,
+      ]) {
+        void queryClient.invalidateQueries({ queryKey: key });
+      }
+    },
   }));
 
   async function remove() {
     const ok = await confirm({
       title: 'Delete this deployment record?',
       description:
-        'Only the record is removed from your history. The commit and the environment stay, and nothing changes on any server.',
+        'Only the record is removed. The commit and the environment stay.',
       confirmLabel: 'Delete record',
       destructive: true,
     });

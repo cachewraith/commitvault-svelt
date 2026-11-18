@@ -74,7 +74,7 @@
     <Dialog.Header>
       <Dialog.Title>{editing ? 'Edit branch' : 'New branch'}</Dialog.Title>
       <Dialog.Description>
-        A branch groups the commits you record. CommitVault does not read your repository.
+        Commits are recorded on a branch of their project.
       </Dialog.Description>
     </Dialog.Header>
 

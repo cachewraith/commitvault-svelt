@@ -210,7 +210,7 @@
       <Dialog.Description>
         {isEdit
           ? 'Correct the details of this recorded commit.'
-          : 'Enter the commit details by hand. CommitVault does not read your repository.'}
+          : 'Paste the hash and message; the rest is optional.'}
       </Dialog.Description>
     </Dialog.Header>
 

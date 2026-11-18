@@ -17,6 +17,7 @@
   import { session } from '$lib/stores/session.svelte';
   import { bootstrapSession, logout } from '$features/auth/session';
   import QuickCreateMenu from '$features/commits/components/QuickCreateMenu.svelte';
+  import RecordPanelHost from '$features/records/RecordPanelHost.svelte';
   import { routes } from './routes';
 
   const route = $derived(router.route);
@@ -102,6 +103,7 @@
       <AppShell onlogout={logout} actions={quickCreate}>
         <Router loading={pageLoading} failed={pageFailed} />
       </AppShell>
+      <RecordPanelHost />
     {:else}
       <AuthLayout>
         <Router loading={pageLoading} failed={pageFailed} />

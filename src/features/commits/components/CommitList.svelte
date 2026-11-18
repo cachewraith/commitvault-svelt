@@ -34,7 +34,6 @@
             hash={commit.commit_hash}
             short={commit.short_hash}
             href={paths.commit(commit.id)}
-            externalUrl={full?.external_url}
           />
           <a
             href={paths.commit(commit.id)}

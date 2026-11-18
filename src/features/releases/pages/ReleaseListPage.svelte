@@ -16,7 +16,6 @@
     DataTableHeader,
     DataTableRow,
     DateTime,
-    DetailPanel,
     EmptyState,
     ErrorState,
     FilterBar,
@@ -30,7 +29,7 @@
   } from '$lib/components';
   import { Button } from '$lib/components/ui/button';
   import * as Select from '$lib/components/ui/select';
-  import { detailPanel, navigate, openInPanel, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
+  import { navigate, queryEnum, queryNumber, queryString, setQuery } from '$lib/router';
   import { RELEASE_STATUSES } from '$lib/types';
   import { formatNumber } from '$lib/utils';
   import { paths } from '$routes/paths';
@@ -38,7 +37,6 @@
   import ProjectSelect from '$features/projects/components/ProjectSelect.svelte';
   import TagSelect from '$features/tags/components/TagSelect.svelte';
   import { releasesApi, type ReleaseListParams } from '../api';
-  import ReleaseDetail from '../components/ReleaseDetail.svelte';
   import ReleaseFormDialog from '../components/ReleaseFormDialog.svelte';
   import type { ReleaseSort, ReleaseStatus } from '../types';
 
@@ -100,11 +98,10 @@
       page: null,
     });
   }
-  const panel = detailPanel();
 </script>
 
 <div class="page">
-  <PageHeader title="Releases" description="Manually curated versions and the commits they contain.">
+  <PageHeader title="Releases">
     {#snippet actions()}
       <Button onclick={() => (creating = true)}>
         <PlusIcon aria-hidden="true" />
@@ -221,18 +218,13 @@
       </DataTableHeader>
       <DataTableBody>
         {#each releases.data.data as release (release.id)}
-          <DataTableRow
-            href={paths.release(release.id)}
-            onopen={() => panel.open(release.id)}
-            selected={panel.id === release.id}
-          >
+          <DataTableRow href={paths.release(release.id)}>
             <DataTableCell>
               <span class="font-mono text-[0.8125rem] font-medium">{release.version}</span>
             </DataTableCell>
             <DataTableCell class="max-w-[28rem]">
               <a
                 href={paths.release(release.id)}
-                onclick={openInPanel(panel, release.id)}
                 class="text-foreground block truncate font-medium hover:underline"
               >
                 {release.title}
@@ -277,16 +269,3 @@
   projectId={projectId.value || undefined}
   onsaved={(release) => navigate(paths.release(release.id))}
 />
-
-<DetailPanel
-  open={panel.id !== null}
-  onclose={panel.close}
-  label="Release"
-  fullPageHref={panel.id ? paths.release(panel.id) : undefined}
->
-  {#if panel.id}
-    {#key panel.id}
-      <ReleaseDetail releaseId={panel.id} layout="panel" ondeleted={panel.close} />
-    {/key}
-  {/if}
-</DetailPanel>

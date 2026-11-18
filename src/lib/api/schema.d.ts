@@ -199,7 +199,10 @@ export interface paths {
         put?: never;
         /**
          * Reset the password with an emailed code
-         * @description Signs out every session and forgets every trusted browser.
+         * @description Signs out every session and forgets every other trusted browser. The
+         *     browser that made the request is trusted (device cookie): having the
+         *     emailed code is the same proof as the sign-in code, so its next sign-in
+         *     does not ask for one.
          */
         post: operations["reset_password"];
         delete?: never;

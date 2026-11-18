@@ -33,7 +33,7 @@
 
 <header class={cn('mb-6 flex flex-col gap-3', className)}>
   {#if breadcrumbs && breadcrumbs.length > 0}
-    <nav aria-label="Breadcrumb">
+    <nav aria-label="Breadcrumb" data-full-page>
       <ol class="text-muted-foreground flex flex-wrap items-center gap-1 text-xs">
         {#each breadcrumbs as crumb, index (index)}
           <li class="flex items-center gap-1">

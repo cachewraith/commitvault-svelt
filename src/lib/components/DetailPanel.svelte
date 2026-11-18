@@ -38,7 +38,7 @@
       <Sheet.Title class="text-muted-foreground text-sm font-medium">{label}</Sheet.Title>
       <Sheet.Description class="sr-only">Press Escape to close.</Sheet.Description>
       {#if fullPageHref}
-        <Button variant="ghost" size="sm" href={fullPageHref} class="ml-auto">
+        <Button variant="ghost" size="sm" href={fullPageHref} class="ml-auto" data-full-page>
           <MaximizeIcon aria-hidden="true" />
           Open full page
         </Button>

@@ -2,13 +2,19 @@
 
 export type DateInput = string | number | Date | null | undefined;
 
-const dateFormatter = new Intl.DateTimeFormat(undefined, {
+/**
+ * Day-month-year everywhere (`17 Nov 2026`, 24-hour times), whatever the
+ * browser's locale — one unambiguous format across the app.
+ */
+export const DATE_LOCALE = 'en-GB';
+
+const dateFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
   year: 'numeric',
   month: 'short',
   day: 'numeric',
 });
 
-const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
+const dateTimeFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
   year: 'numeric',
   month: 'short',
   day: 'numeric',
@@ -16,12 +22,14 @@ const dateTimeFormatter = new Intl.DateTimeFormat(undefined, {
   minute: '2-digit',
 });
 
-const fullFormatter = new Intl.DateTimeFormat(undefined, {
+const timeFormatter = new Intl.DateTimeFormat(DATE_LOCALE, { hour: '2-digit', minute: '2-digit' });
+
+const fullFormatter = new Intl.DateTimeFormat(DATE_LOCALE, {
   dateStyle: 'full',
   timeStyle: 'long',
 });
 
-const relativeFormatter = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const relativeFormatter = new Intl.RelativeTimeFormat(DATE_LOCALE, { numeric: 'auto' });
 
 /** Parse to a valid Date, or `null` when the input is missing or unparseable. */
 export function toDate(value: DateInput): Date | null {
@@ -30,16 +38,32 @@ export function toDate(value: DateInput): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
-/** `Nov 17, 2026` */
+/** `17 Nov 2026` */
 export function formatDate(value: DateInput, fallback = '—'): string {
   const date = toDate(value);
   return date ? dateFormatter.format(date) : fallback;
 }
 
-/** `Nov 17, 2026, 02:14 PM` */
+/** `17 Nov 2026, 14:14` */
 export function formatDateTime(value: DateInput, fallback = '—'): string {
   const date = toDate(value);
   return date ? dateTimeFormatter.format(date) : fallback;
+}
+
+/** `14:14` */
+export function formatTime(value: DateInput, fallback = '—'): string {
+  const date = toDate(value);
+  return date ? timeFormatter.format(date) : fallback;
+}
+
+/** `10 Nov 2026 → 17 Nov 2026`; an open end reads `since …` / `until …`. */
+export function formatDateRange(from: DateInput, to: DateInput, fallback = 'Any time'): string {
+  const start = toDate(from);
+  const end = toDate(to);
+  if (start && end) return `${dateFormatter.format(start)} → ${dateFormatter.format(end)}`;
+  if (start) return `since ${dateFormatter.format(start)}`;
+  if (end) return `until ${dateFormatter.format(end)}`;
+  return fallback;
 }
 
 /** Long unambiguous form with weekday and time zone; used for `title` tooltips. */

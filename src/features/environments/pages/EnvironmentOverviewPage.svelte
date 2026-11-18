@@ -53,7 +53,6 @@
 <div class="page">
   <PageHeader
     title="Environments"
-    description="Where each project runs, and the latest deployment you recorded for it. An environment without a record may still have something deployed — it just has not been recorded here."
   />
 
   <FilterBar active={filtered} onreset={() => setQuery({ search: null, project_id: null, page: null })} label="Environment filters">

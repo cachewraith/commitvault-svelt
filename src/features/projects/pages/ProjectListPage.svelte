@@ -10,7 +10,7 @@
   import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
   import SettingsIcon from '@lucide/svelte/icons/settings';
   import TrashIcon from '@lucide/svelte/icons/trash';
-  import { queryKeys, type SortOrder } from '$lib/api';
+  import { queryKeys, removeFromCache, type SortOrder } from '$lib/api';
   import {
     BranchBadge,
     confirm,
@@ -102,11 +102,17 @@
 
   const remove = createMutation(() => ({
     mutationFn: (project: Project) => projectsApi.remove(project.id),
-    onSuccess: (_result, project) => {
-      invalidateAllProjectData(queryClient);
+    // Optimistic: the card disappears at once; restored if the server refuses.
+    onMutate: (project) => {
+      const restore = removeFromCache(queryClient, project.id, [queryKeys.projects.lists(), queryKeys.dashboard.all]);
       toast.success(`Project “${project.name}” deleted`);
+      return { restore };
     },
-    onError: (error) => toastError(error, 'Could not delete the project.'),
+    onError: (error, _project, context) => {
+      context?.restore();
+      toastError(error, 'Could not delete the project. It is back in the list.');
+    },
+    onSettled: () => invalidateAllProjectData(queryClient),
   }));
 
   async function archive(project: Project) {
@@ -135,7 +141,7 @@
 </script>
 
 <div class="page">
-  <PageHeader title="Projects" description="Everything you track, one project at a time.">
+  <PageHeader title="Projects">
     {#snippet actions()}
       <Button onclick={() => (createOpen = true)}>
         <PlusIcon aria-hidden="true" />

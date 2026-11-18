@@ -17,8 +17,8 @@
     TimelineItem,
     statusPresentation,
   } from '$lib/components';
-  import { openInPanel, type DetailPanelState } from '$lib/router';
-  import { formatDateTime } from '$lib/utils/format';
+  import { recordPanel } from '$lib/router';
+  import { formatDateTime, formatTime } from '$lib/utils/format';
   import { commitSubject } from '$features/commits/format';
   import { paths } from '$routes/paths';
   import { groupByDay } from '../grouping';
@@ -34,8 +34,6 @@
     label?: string;
     /** Split into sections with a heading per local calendar day. */
     groupByDay?: boolean;
-    /** Open records in this side panel instead of navigating (modifier clicks still navigate). */
-    panel?: DetailPanelState;
   }
 
   let {
@@ -45,7 +43,6 @@
     showCommit = true,
     label = 'Deployment records',
     groupByDay: grouped = false,
-    panel,
   }: Props = $props();
 
   const groups = $derived(grouped ? groupByDay(deployments) : []);
@@ -54,11 +51,11 @@
 {#snippet entry(deployment: Deployment)}
   <TimelineItem tone={statusPresentation(deployment.status).tone} icon={STATUS_ICONS[deployment.status]}>
     {#snippet title()}
+      {@const shown = recordPanel.shows(paths.deployment(deployment.id))}
       <a
         href={paths.deployment(deployment.id)}
-        onclick={panel ? openInPanel(panel, deployment.id) : undefined}
-        class={panel?.id === deployment.id ? 'text-brand' : 'hover:text-brand'}
-        aria-current={panel?.id === deployment.id ? 'true' : undefined}
+        class={shown ? 'text-brand' : 'hover:text-brand'}
+        aria-current={shown ? 'true' : undefined}
       >
         {deployment.deployment_title}
       </a>
@@ -67,7 +64,7 @@
       <StatusBadge status={deployment.status} variant="dot" />
       {#if grouped}
         <time datetime={deployment.deployed_at} title={formatDateTime(deployment.deployed_at)} class="tabular">
-          {new Date(deployment.deployed_at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}
+          {formatTime(deployment.deployed_at)}
         </time>
       {:else}
         <DateTime value={deployment.deployed_at} mode="relative" class="tabular" />

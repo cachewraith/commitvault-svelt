@@ -1,4 +1,4 @@
-<!-- Git branch name: monospace, branch icon, tinted with the accent so it never reads as a status. -->
+<!-- Git branch name: monospace with a branch icon, quiet text rather than a coloured pill. -->
 <script lang="ts">
   import GitBranchIcon from '@lucide/svelte/icons/git-branch';
   import { cn } from '$lib/utils/cn';
@@ -14,8 +14,8 @@
 
   const classes = $derived(
     cn(
-      'border-brand/25 bg-brand/10 text-brand inline-flex h-5 max-w-[28ch] items-center gap-1 rounded-md border px-1.5 align-middle font-mono text-xs',
-      href && 'hover:bg-brand/20 transition-colors',
+      'text-muted-foreground inline-flex max-w-[28ch] items-center gap-1 align-middle font-mono text-xs',
+      href && 'hover:text-foreground transition-colors',
       className,
     ),
   );

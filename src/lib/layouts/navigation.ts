@@ -2,6 +2,7 @@ import type { Component } from 'svelte';
 import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
 import FolderGitIcon from '@lucide/svelte/icons/folder-git-2';
 import GitCommitIcon from '@lucide/svelte/icons/git-commit-horizontal';
+import CalendarRangeIcon from '@lucide/svelte/icons/calendar-range';
 import RocketIcon from '@lucide/svelte/icons/rocket';
 import ServerIcon from '@lucide/svelte/icons/server';
 import PackageIcon from '@lucide/svelte/icons/package';
@@ -23,6 +24,7 @@ export const PRIMARY_NAV: NavItem[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboardIcon, exact: true },
   { label: 'Projects', href: '/projects', icon: FolderGitIcon },
   { label: 'Commits', href: '/commits', icon: GitCommitIcon },
+  { label: 'Timeline', href: '/timeline', icon: CalendarRangeIcon },
   { label: 'Deployments', href: '/deployments', icon: RocketIcon },
   { label: 'Environments', href: '/environments', icon: ServerIcon },
   { label: 'Releases', href: '/releases', icon: PackageIcon },

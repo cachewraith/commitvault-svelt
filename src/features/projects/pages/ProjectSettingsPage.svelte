@@ -117,7 +117,6 @@
     {@const current = project.data}
     <PageHeader
       title="Project settings"
-      description={`Details, environments and lifecycle of ${current.name}.`}
       breadcrumbs={[
         { label: 'Projects', href: paths.projects() },
         { label: current.name, href: paths.project(projectId) },

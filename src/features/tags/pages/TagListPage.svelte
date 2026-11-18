@@ -5,7 +5,7 @@
   import PlusIcon from '@lucide/svelte/icons/plus';
   import TagsIcon from '@lucide/svelte/icons/tags';
   import TrashIcon from '@lucide/svelte/icons/trash';
-  import { queryKeys, type SortOrder } from '$lib/api';
+  import { queryKeys, removeFromCache, type SortOrder } from '$lib/api';
   import {
     confirm,
     DataTable,
@@ -76,11 +76,17 @@
 
   const remove = createMutation(() => ({
     mutationFn: (tag: Tag) => tagsApi.remove(tag.id),
-    onSuccess: (_result, tag) => {
-      invalidateTaggedResources(queryClient);
+    // Optimistic: the row disappears at once; restored if the server refuses.
+    onMutate: (tag) => {
+      const restore = removeFromCache(queryClient, tag.id, [queryKeys.tags.all]);
       toast.success(`Tag “${tag.name}” deleted`);
+      return { restore };
     },
-    onError: (error) => toastError(error, 'Could not delete the tag.'),
+    onError: (error, _tag, context) => {
+      context?.restore();
+      toastError(error, 'Could not delete the tag. It is back in the list.');
+    },
+    onSettled: () => invalidateTaggedResources(queryClient),
   }));
 
   async function destroy(tag: Tag) {
@@ -114,7 +120,6 @@
 <div class="page">
   <PageHeader
     title="Tags"
-    description="Reusable labels for projects, commits, deployment records, releases and notes."
   >
     {#snippet actions()}
       <Button onclick={openCreate}>
